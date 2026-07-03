@@ -1,6 +1,6 @@
 ---
 name: turbofy-flows
-description: Use when building or modifying Turbofy flows (workspace automations) via the Turbofy MCP — creating a flow with Turbofy_flow_init, pulling flows locally with Turbofy_flow_pull, editing flow.ts with the flowBuilder DSL (triggers, steps, dynamic js params, secrets), validating (circular-flow rules, npm run validate), or pushing with Turbofy_flow_push. Loads the flow runtime mental model (trigger → linked list of steps over SNS+Lambda), the file layout (~/.turbofy/workspaces/<env>/<wsId>/flows/<flowId>/), signatures for all trigger variants and all 19 step types, the $ output context for js() params, the secret() rules, and the recursion/validation rules. For workspace/schema work load `turbofy-platform`; for apps load `turbofy-apps`.
+description: Use when building or modifying Turbofy flows (workspace automations) via the Turbofy MCP — creating a flow with Turbofy_flow_init, pulling flows locally with Turbofy_flow_pull, editing flow.ts with the flowBuilder DSL (triggers, steps, dynamic js params, secrets), validating (circular-flow rules, npm run validate), or pushing with Turbofy_flow_push. Loads the flow runtime mental model (trigger → linked list of steps over SNS+Lambda), the file layout (~/.turbofy/workspaces/<env>/<wsId>/flows/<flowId>/), signatures for all trigger variants and all 19 step types, the `state` output context for js() params, the secret() rules, and the recursion/validation rules. For workspace/schema work load `turbofy-platform`; for apps load `turbofy-apps`.
 ---
 
 # Turbofy Flows
@@ -66,7 +66,7 @@ export const flow = flowBuilder.buildFlow({
     onOrderCreated: flowBuilder.trigger.tableDataChange({
       tableId: "order",               // table name, matched case-insensitively
       operation: "INSERT",            // "INSERT" | "MODIFY" | "REMOVE"
-      condition: "$.new !== undefined || $.status === 'paid'", // optional JS, evaluated against the trigger data (NOT the output map)
+      condition: "state.new !== undefined || state.status === 'paid'", // optional JS, evaluated against the trigger data (NOT the output map)
     }),
     manual: flowBuilder.trigger.manual(),      // fired from the dashboard / flowtrigger record
     nightly: flowBuilder.trigger.schedule(),   // scheduled variant
@@ -79,16 +79,16 @@ export const flow = flowBuilder.buildFlow({
         httpMethod: "POST",
         url: "https://erp.example.com/hook",
         headers: { Authorization: flowBuilder.secret("<secret record id>") },
-        body: flowBuilder.js("JSON.stringify($.onOrderCreated)"),
+        body: flowBuilder.js("JSON.stringify(state.onOrderCreated)"),
       },
-      skipIf: "$.onOrderCreated.test === true",       // JS: truthy → skip this step, continue flow
-      continueIf: "$.callWebhook.type === 'success'", // JS: falsy → stop the flow after this step
+      skipIf: "state.onOrderCreated.test === true",       // JS: truthy → skip this step, continue flow
+      continueIf: "state.callWebhook.type === 'success'", // JS: falsy → stop the flow after this step
       // next: "someLaterStep" — optional explicit override of the array order
     }),
     flowBuilder.step.createType("logResult", {
       params: {
         ofType: "webhooklog",
-        fields: flowBuilder.js("({ status: $.callWebhook.status })"),
+        fields: flowBuilder.js("({ status: state.callWebhook.status })"),
       },
     }),
   ],
@@ -97,28 +97,28 @@ export const flow = flowBuilder.buildFlow({
 });
 ```
 
-- **Trigger key = output key.** The key you choose in `triggers` (e.g. `onOrderCreated`) is the key under which the trigger data appears in `$`.
-- **Step name = output key.** The first argument of every step factory is both the step's identity and its key in `$` after it runs.
+- **Trigger key = output key.** The key you choose in `triggers` (e.g. `onOrderCreated`) is the key under which the trigger data appears in `state`.
+- **Step name = output key.** The first argument of every step factory is both the step's identity and its key in `state` after it runs.
 - **Chaining**: array order defines execution order. `next: "<stepName>"` overrides it; `next: null` ends the flow early. `detachedSteps: [...]` exists only for round-tripping steps unreachable from `startStep` — don't use it for new flows.
 - Conditions (`skipIf`, `continueIf`, trigger `condition`) are **plain JS code strings** (js is the only supported logic language; json-logic is legacy and not supported by the DSL).
 
-## 4) Dynamic params: js() and the $ context
+## 4) Dynamic params: js() and the state context
 
 Any param value (at any nesting level of an object) can be one of:
 
 - a **static value** — stored verbatim in the declaration,
-- `flowBuilder.js("<code>")` — JS executed server-side at step-resolution time; the last expression is the value. `$` is the accumulated output map keyed by trigger/step names: `$.onOrderCreated` (trigger data — `{ old, new }` for MODIFY triggers), `$.callWebhook` (a previous step's result).
+- `flowBuilder.js("<code>")` — JS executed server-side at step-resolution time; the last expression is the value. `state` is the accumulated output map keyed by trigger/step names: `state.onOrderCreated` (trigger data — `{ old, new }` for MODIFY triggers), `state.callWebhook` (a previous step's result).
 - `flowBuilder.secret("<secret record id>")` — see section 6. Only for credential-holding string params.
 
 Notes:
 
 - To return an object literal from `js()`, wrap it in parentheses: `"({ a: 1 })"`.
-- Markers inside **arrays** are not supported (the runtime cannot address paths inside arrays) — wrap the whole array: `flowBuilder.js("[$.a.id, $.b.id]")`.
+- Markers inside **arrays** are not supported (the runtime cannot address paths inside arrays) — wrap the whole array: `flowBuilder.js("[state.a.id, state.b.id]")`.
 - Static **objects and arrays** are fine as params; the builder emits the right config so they pass through verbatim.
 
 ## 5) Step catalog (all 19 step types)
 
-Every factory has the signature `flowBuilder.step.<type>(name, { description?, params, next?, skipIf?, continueIf? })`. Params below are the static shapes; any leaf can be `js()` instead. The step's **result** is what lands in `$.<stepName>`.
+Every factory has the signature `flowBuilder.step.<type>(name, { description?, params, next?, skipIf?, continueIf? })`. Params below are the static shapes; any leaf can be `js()` instead. The step's **result** is what lands in `state.<stepName>`.
 
 **Write steps** (create/modify/delete workspace records — these can trigger other flows' `TABLE_DATA_CHANGE` triggers, see section 7):
 
@@ -189,4 +189,4 @@ Warnings:
 ## See also
 
 - `turbofy-platform` — org/workspace discovery, environments, core MCP rules, schema workflow.
-- `turbofy-dynamic-fields` — the other server-side JS surface ($$std API for dynamic fields); note flows use `$` (output map), not `$$std`.
+- `turbofy-dynamic-fields` — the other server-side JS surface ($$std API for dynamic fields); note flows use `state` (output map), not `$$std`.
