@@ -51,6 +51,7 @@ Organization
 | Apps CMS data model, `Turbofy_app_*` workflow, app file layout, localization, block instances | `turbofy-apps`            |
 | Writing a block type's runtime React component (`block-types/<Name>/index.tsx`)             | `turbofy-blocks`          |
 | Writing server-side `@dynamic_field` JS (`defaultConfig`, `defaultDynamicData`, etc.)       | `turbofy-dynamic-fields`  |
+| Flows (workspace automations): `Turbofy_flow_*` workflow, flowBuilder DSL, triggers/steps    | `turbofy-flows`           |
 
 Multiple skills can be active at once — pull in whichever match the work in flight.
 
@@ -120,6 +121,10 @@ The `turbofy` (and future `turbofy-alpha`) MCP exposes a single `Turbofy_*` tool
 **Apps (unified workspace — covered by `turbofy-apps`):**
 
 - `Turbofy_app_init`, `Turbofy_app_pull`, `Turbofy_app_push`
+
+**Flows (covered by `turbofy-flows`):**
+
+- `Turbofy_flow_init`, `Turbofy_flow_pull`, `Turbofy_flow_push`
 
 ---
 
