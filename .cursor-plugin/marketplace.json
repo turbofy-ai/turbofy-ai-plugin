@@ -13,7 +13,7 @@
       "displayName": "Turbofy",
       "source": "./",
       "description": "Turbofy MCP integration plus guidance skills for building apps, block types, and dynamic fields on the Turbofy platform.",
-      "version": "0.0.3",
+      "version": "0.0.6",
       "author": {
         "name": "Turbofy",
         "email": "hello@turbofy.com"
