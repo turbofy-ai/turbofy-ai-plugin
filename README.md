@@ -108,6 +108,7 @@ Restart OpenCode and the `turbofy-*` skills will show up as available skills.
   - **turbofy-apps** — building and editing Turbofy apps: pages, blocks, localization.
   - **turbofy-blocks** — writing the React components that power block types.
   - **turbofy-dynamic-fields** — writing the small server-side scripts that fill in dynamic content.
+  - **turbofy-flows** - building and editing Turbofy flows.
 
 You don't need to remember these names — your assistant picks the right one as you work.
 
