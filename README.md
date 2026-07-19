@@ -2,6 +2,8 @@
 
 This plugin connects your AI coding assistant — **Claude Code**, **Codex**, **Cursor**, or **OpenCode** — to Turbofy. Once installed, your assistant can help you build Turbofy apps, edit pages and blocks, and work with your data, all from inside the editor.
 
+The plugin ships the **Turbofy HTTP MCP** (currently the alpha endpoint) plus skills that describe the JSON / remote-session workflows. There is no local workspace checkout under `~/.turbofy`.
+
 ---
 
 ## How to install
@@ -29,9 +31,8 @@ Pick your app below for the exact clicks.
 6. Choose **Add from a repository**.
 7. Click on **Select repository** and paste `https://github.com/graphapi-io/turbofy-ai-plugin` and click **Sync**.
 8. Select the **Turbofy** plugin and click **Install** (`+` button).
-9. In a chat, run **`/turbofy-setup`** once (see [Fewer permission prompts](#fewer-permission-prompts-claude) below). This stops Claude from asking for permission every time it works on your Turbofy files.
 
-That's it — from now on you can just use it.
+That's it — from now on you can just use it. The first time tools run, authenticate with your Turbofy credentials when prompted.
 
 ### Codex
 
@@ -74,8 +75,8 @@ Add (or merge) this block:
   "$schema": "https://opencode.ai/config.json",
   "mcp": {
     "turbofy": {
-      "type": "local",
-      "command": ["npx", "-y", "@turbofy-ai/mcp@latest"],
+      "type": "remote",
+      "url": "https://tdsbhitua7.execute-api.eu-central-1.amazonaws.com/mcp",
       "enabled": true
     }
   }
@@ -102,41 +103,15 @@ Restart OpenCode and the `turbofy-*` skills will show up as available skills.
 
 ## What you get after installing
 
-- A direct connection from your assistant to your Turbofy workspace (the **Turbofy MCP server**), so it can list your organizations and workspaces, pull and push apps, edit your schema, and manage data.
-- Four built-in **skills** that teach your assistant how Turbofy works. They turn on automatically when relevant:
-  - **turbofy-platform** — the big picture: organizations, workspaces, environments, and the data schema.
-  - **turbofy-apps** — building and editing Turbofy apps: pages, blocks, localization.
-  - **turbofy-blocks** — writing the React components that power block types.
-  - **turbofy-dynamic-fields** — writing the small server-side scripts that fill in dynamic content.
-  - **turbofy-flows** - building and editing Turbofy flows.
+- A direct HTTP connection from your assistant to Turbofy (the **Turbofy MCP**), so it can list organizations and workspaces, read/write schema and flows as JSON, inspect and push apps, manage data, and edit block React sources in a remote build session.
+- Built-in **skills** that teach your assistant how Turbofy works. They turn on automatically when relevant:
+  - **turbofy-platform** — organizations, workspaces, schema JSON, data CRUD.
+  - **turbofy-apps** — apps as JSON manifests via `app_get` → `app_push`.
+  - **turbofy-blocks** — remote `block_type_*` session + React component rules.
+  - **turbofy-dynamic-fields** — server-side `$$std` scripts for dynamic content.
+  - **turbofy-flows** — flow JSON declarations via `flow_upsert`.
 
 You don't need to remember these names — your assistant picks the right one as you work.
-
----
-
-## Fewer permission prompts (Claude)
-
-Turbofy keeps your pulled workspaces and apps under `~/.turbofy/`. Because that
-folder lives outside your current project, Claude asks for permission every time
-it reads or edits a file there — which gets noisy fast.
-
-To fix it once, type `/` in a Claude chat and run the **`/turbofy-setup`** skill:
-
-```
-/turbofy-setup
-```
-
-It adds a small block to your `~/.claude/settings.json` that trusts the
-`~/.turbofy` folder, so Claude can work on your Turbofy files without asking each
-time. It's safe to run more than once — it won't duplicate anything. After it
-finishes, run `/reload-plugins` or restart the app.
-
-If you'd rather not run it, you can get the same effect by switching the session
-to **Auto accept edits** mode from the selector in the message box — but you'd
-need to do that each session, whereas `/turbofy-setup` is permanent.
-
-> This step is **Claude Code only** — it configures Claude's settings file.
-> Cursor, Codex, and OpenCode manage permissions their own way.
 
 ---
 
@@ -146,6 +121,5 @@ need to do that each session, whereas `/turbofy-setup` is permanent.
 - **Tool names look like `mcp__turbofy__<tool>`.** An installed plugin's MCP tools are named `mcp__{serverKey}__{tool}` from the `.mcp.json` server key (`turbofy`) — the plugin name no longer appears in tool names. Skills are namespaced `turbofy:<skill>`. In Codex the plugin is addressable as `@turbofy` (the plugin `name`, which must match its directory `plugins/turbofy/`). The UI shows "Turbofy MCP" via `displayName`.
 - **Nothing happened after install.** Restart the app or reload plugins. In Claude Code you can also run `/reload-plugins`.
 - **The assistant doesn't seem to see Turbofy.** Make sure you're signed in to Turbofy in your assistant, and that the `turbofy` MCP appears as connected (in Claude Code, run `/mcp`).
-- **Claude keeps asking permission to touch `~/.turbofy`.** Run `/turbofy-setup` once (see [Fewer permission prompts](#fewer-permission-prompts-claude)).
 - **I want a clean reinstall.** Remove the plugin from the plugin menu, then add the marketplace again and reinstall.
-
+- **Still seeing references to `~/.turbofy` or `npx @turbofy-ai/mcp`.** That was the old local MCP. This plugin uses the HTTP MCP URL in `mcp.json` — update/reinstall the plugin if an older copy is cached.

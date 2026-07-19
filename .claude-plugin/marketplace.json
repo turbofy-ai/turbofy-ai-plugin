@@ -10,7 +10,7 @@
       "name": "turbofy",
       "displayName": "Turbofy MCP",
       "source": "./",
-      "description": "Turbofy MCP integration plus three guidance skills for building apps, block types, and dynamic fields on the Turbofy platform."
+      "description": "Turbofy HTTP MCP plus guidance skills for schema/apps/flows as JSON and remote block build sessions."
     }
   ]
 }

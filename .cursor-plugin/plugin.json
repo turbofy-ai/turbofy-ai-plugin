@@ -1,8 +1,8 @@
 {
   "name": "turbofy-plugin",
   "displayName": "Turbofy",
-  "description": "Turbofy MCP integration plus guidance skills for building apps, block types, and dynamic fields on the Turbofy platform.",
-  "version": "0.0.7",
+  "description": "Turbofy HTTP MCP plus guidance skills for schema/apps/flows as JSON and remote block build sessions.",
+  "version": "0.0.8",
   "author": {
     "name": "Turbofy",
     "email": "hello@turbofy.com"

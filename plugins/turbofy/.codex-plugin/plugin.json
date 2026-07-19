@@ -1,7 +1,7 @@
 {
   "name": "turbofy",
-  "version": "0.0.7",
-  "description": "Turbofy MCP integration plus guidance skills for building apps, block types, and dynamic fields on the Turbofy platform.",
+  "version": "0.0.8",
+  "description": "Turbofy HTTP MCP plus guidance skills for schema/apps/flows as JSON and remote block build sessions.",
   "author": {
     "name": "Turbofy",
     "email": "hello@turbofy.com"
@@ -12,8 +12,8 @@
   "mcpServers": "./.mcp.json",
   "interface": {
     "displayName": "Turbofy",
-    "shortDescription": "Turbofy MCP server and app-building skills.",
-    "longDescription": "Adds the Turbofy MCP server plus skills for Turbofy apps, block types, dynamic fields, and platform workflows.",
+    "shortDescription": "Turbofy HTTP MCP and app-building skills.",
+    "longDescription": "Adds the Turbofy HTTP MCP plus skills for schema/apps/flows as JSON, remote block sessions, dynamic fields, and platform workflows.",
     "developerName": "GraphApi.io GmbH",
     "category": "Developer Tools",
     "capabilities": ["MCP", "Skills"],

@@ -6,32 +6,30 @@ disable-model-invocation: false
 
 # Turbofy Dynamic Fields
 
-Dynamic fields are string fields whose contents are executed as JavaScript in a server-side Secure VM. They are how a Turbofy app computes derived values, fetches related records, resolves localized copies, and resolves page links — all without a deployed backend. This skill covers the runtime model, the `$$std` API, and common patterns.
+Dynamic fields are string (or configured) fields whose contents run as JavaScript in a server-side Secure VM. They compute derived values, fetch related records, resolve localized copies, and resolve page links — without a deployed backend.
 
-The companion skills `turbofy-apps` (app workflow + data model) and `turbofy-blocks` (writing block React components) cover those areas.
+Companions: `turbofy-apps` (where these fields live on CMS entities), `turbofy-blocks` (React consumption).
+
+**Writing `defaultConfig` / `defaultDynamicData` through MCP:** put the JS on the app manifest (`blockTypes[]` / block instances) and apply with `app_push` (`turbofy-apps`). Prefer unwrapped user JS; the platform applies copies guards.
 
 ## When to load this skill
 
-Load when **server-side data is wrong or missing** — e.g. "why is this section empty?", "load featured products on the homepage", "show the article title from the URL". Users rarely say "dynamic field"; they describe the symptom or outcome.
+Load when **server-side data is wrong or missing** — e.g. "why is this section empty?", "load featured products on the homepage".
 
 ---
 
 ## Runtime model
 
-- Return value:
-  - If the last statement is an expression, that expression is returned.
-  - `return ...` works normally.
-  - If nothing is returned, result is `undefined`.
-- Errors:
-  - Syntax/runtime errors yield `null` for that field (without detailed error info).
+- Return value: last expression, or `return …`. Otherwise `undefined`.
+- Errors: syntax/runtime → `null` for that field (little detail).
 
 Globals:
 
-- `$$self`: record snapshot at start of evaluation
-- `$$args`: dynamic arguments (request-scoped)
-- `$$std`: standard library helpers
+- `$$self` — record snapshot at start of evaluation
+- `$$args` — request-scoped dynamic arguments
+- `$$std` — standard library
 
-**Snapshot gotcha:** If one dynamic field reads another dynamic field on the same record via `$$self.otherField`, it sees the original string, not the computed value.
+**Snapshot gotcha:** reading another dynamic field on the same record via `$$self.otherField` sees the original string, not the computed value.
 
 ---
 
@@ -40,18 +38,18 @@ Globals:
 ### Record/args helpers
 
 - `$$std.getCurrentRecord()` — legacy alias for `$$self`
-- `$$std.getDynamicArg(key, defaultValue?)` — reads from `$$args` using lodash-style paths (e.g. `"config.lang"`)
-- `$$std.get` — re-export of `lodash/get`
+- `$$std.getDynamicArg(key, defaultValue?)` — lodash-style paths into `$$args`
+- `$$std.get` — `lodash/get`
 
 ### `$$std.getRecord(tableId, recordId, options?)`
 
-Fetches a single record. Returns the record object, or `null` when fetch fails.
+Returns the record or `null`.
 
-| Option        | Type      | Description                                                                                                             |
-| ------------- | --------- | ----------------------------------------------------------------------------------------------------------------------- |
-| `dynamicArgs` | `object`  | Passed through to nested dynamic field evaluation. **Always pass `$$args`** when the fetched record has dynamic fields. |
-| `normalize`   | `boolean` | Default `true`. Set `false` to return the raw provider value.                                                           |
-| `limit`       | `number`  | Forwarded to the provider (primarily used by list operations).                                                          |
+| Option | Description |
+|---|---|
+| `dynamicArgs` | Pass through for nested dynamic fields — **always pass `$$args`** when needed |
+| `normalize` | Default `true` |
+| `limit` | Forwarded to provider |
 
 ```js
 const product = $$std.getRecord("tbl_abc", productId, { dynamicArgs: $$args });
@@ -59,164 +57,82 @@ const product = $$std.getRecord("tbl_abc", productId, { dynamicArgs: $$args });
 
 ### `$$std.listRecords(tableId, options?, withToken?)`
 
-Fetches a page of records from a collection. **Does not accept `filter`** — filter client-side on the returned items.
+No server-side `filter` — filter client-side on returned items.
 
-| Option        | Type            | Description                                                                                                          |
-| ------------- | --------------- | -------------------------------------------------------------------------------------------------------------------- |
-| `cursor`      | `string`        | Pagination cursor (from a previous `nextToken`).                                                                     |
-| `limit`       | `number`        | Max records to return.                                                                                               |
-| `dynamicArgs` | `object`        | Passed through to nested evaluation.                                                                                 |
-| `normalize`   | `boolean`       | Default `true`.                                                                                                      |
-| `sortRange`   | `object`        | Range/filter condition on the sort key (defaults to `updatedAt` or the field marked `@sortby`). See operators below. |
-| `sortOrder`   | `DESC` or `ASC` | Sort direction. Defaults to `DESC` if omitted.                                                                       |
+Options: `cursor`, `limit`, `dynamicArgs`, `normalize`, `sortRange`, `sortOrder` (`ASC`|`DESC`).
 
-**Sort range operators:**
+**Sort range operators:** `eq`, `beginsWith`, `lt`, `le`, `gt`, `ge`, `between: [from, to]`.
 
-| Operator     | Shape                                   | Meaning               |
-| ------------ | --------------------------------------- | --------------------- |
-| `eq`         | `{ eq: "value" }`                       | Equal                 |
-| `beginsWith` | `{ beginsWith: "prefix" }`              | Starts with           |
-| `lt`         | `{ lt: "value" }`                       | Less than             |
-| `le`         | `{ le: "value" }`                       | Less than or equal    |
-| `gt`         | `{ gt: "value" }`                       | Greater than          |
-| `ge`         | `{ ge: "value" }`                       | Greater than or equal |
-| `between`    | `{ between: ["fromValue", "toValue"] }` | Inclusive range       |
+- Default: returns `items` array
+- `withToken === true`: `{ items, nextToken }`
 
 ```js
-// Records updated today
-const today = new Date().toISOString().slice(0, 10);
 const recent = $$std.listRecords("tbl_abc", {
-  sortRange: { ge: today },
+  sortRange: { ge: new Date().toISOString().slice(0, 10) },
   sortOrder: "DESC",
   limit: 20,
 });
 ```
 
-Return shape depends on `withToken`:
-
-- **default** (`withToken` omitted or `false`): returns the `items` array directly
-- **`withToken === true`**: returns `{ items, nextToken }`
-
-```js
-// Simple — returns array
-const products = $$std.listRecords("tbl_abc");
-
-// With pagination — returns { items, nextToken }
-const result = $$std.listRecords(
-  "tbl_abc",
-  { limit: 10, cursor: nextToken },
-  true,
-);
-result.items; // array
-result.nextToken; // string | undefined
-```
-
 ### `$$std.listRecordsByParent(tableId, parentTableId, parentRecordId, options?, withToken?)`
 
-Fetches a page of records filtered by parent relationship.
-
-- **options**: same as `listRecords` (`cursor`, `limit`, `dynamicArgs`, `normalize`)
-- **return shape**: same as `listRecords`
-
-```js
-const blocks = $$std.listRecordsByParent("tbl_block", "tbl_page", pageId);
-```
+Same options/return shape as `listRecords`, scoped by parent.
 
 ### `$$std.batchGetRecords(tableId, recordIds, options?)`
 
-Batch-fetches multiple records from a single table.
-
-- **returns**: `{ items, unprocessedKeys }`
-
-```js
-const { items } = $$std.batchGetRecords("tbl_abc", ["id1", "id2", "id3"]);
-```
+→ `{ items, unprocessedKeys }`
 
 ### `$$std.batchGetRecordsByInputs(inputs)`
 
-Batch-fetch multiple records in one go, where each entry can target a different table and have different `dynamicArgs`.
-
-- **inputs**: `Array<{ ofType: string; id: string; options?: { dynamicArgs?: object; normalize?: boolean } }>`
-- **returns**: `{ items, unprocessedKeys }`
-  - `items`: `Array<Record<string, unknown> | null>` aligned to `inputs` order (duplicates preserved)
-
-Use this as an optimization tool when you would otherwise call `$$std.getRecord(...)` many times.
+`inputs`: `Array<{ ofType, id, options? }>` → `{ items, unprocessedKeys }` aligned to inputs (duplicates preserved). Prefer this over many `getRecord` calls.
 
 ### `$$std.translate(localizationPartialKey, copyPath?)`
 
-Resolves a localized value from a Localization record.
-
-1. Looks up a Localization record with id `${lang}_${localizationPartialKey}`
-2. Reads its `dictionary` field
-3. If `copyPath` is provided, returns `$$std.get(dictionary, copyPath)`; otherwise returns the full dictionary
+Looks up Localization id `${lang}_${localizationPartialKey}`, reads `dictionary`, optional path.
 
 ```js
-// Full dictionary
 const copies = $$std.translate("blocktype_" + $$self.id);
-
-// Single value via path
 const title = $$std.translate("home-page", "title");
 ```
 
-Returns `null` if the localization record or key doesn't exist.
-
 ### `$$std.batchTranslate(entries, copyPath?)`
 
-Resolves many localization values in one go.
-
-- **entries**: `Array<string | { key?: string; localizationPartialKey?: string; copyPath?: string }>`
-  - string entries are treated as the localization partial key
-  - `copyPath` can be provided per-entry or as the second argument
-- **returns**: `Array<unknown | null>` aligned to `entries` order
-  - missing localization records resolve to `null`
-
-```js
-const titles = $$std.batchTranslate(["home-page", "footer"], "title");
-```
+Many translations in one call → array aligned to `entries`.
 
 ### `$$std.getImage(imageId)`
 
-Fetches an Image record. Returns the record object (`{ url, height, width }`) or `null`.
-
-```js
-const image = $$std.getImage($$self.heroImageId);
-// image?.url, image?.height, image?.width
-```
+→ `{ url, height, width }` or `null`.
 
 ### `$$std.batchLink(entries)`
 
-Resolves many page links in one call by returning each target page's resolved `localizedConfig.canonicalPath`.
+Resolves page `localizedConfig.canonicalPath` values.
 
-- **entries**: `Array<string | { pageId: string; path?: string; dynamicArgs?: object }>`
-  - string entries are treated as `{ pageId: entry }`
-  - `path` is converted to `slug` segments under the hood (used by the page's `localizedConfig` resolver)
-- **returns**: `Array<string | null>` aligned to `entries` order
+- `entries`: `Array<string | { pageId, path?, dynamicArgs? }>`
+- Requires `$$args.lang`
+- Returns `Array<string | null>`
 
-Requirements:
-
-- `$$args.lang` must be set
-- `cmsOfTypes.page` must be configured (use the system CMS type id from `CmsOfTypeEnum.Page`)
+Use system page ofType `"cmspage"` in surrounding CMS config; pass real page record ids as `pageId`.
 
 ---
 
 ## Reserved `dynamicArgs` keys
 
-| Key                   | Type                               | Description                                                                                                                                                                                                                               |
-| --------------------- | ---------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `fields`              | `string[]`                         | Projection: evaluate only the listed dynamic fields. Missing or `[]` evaluates all. If your code uses `$$self.someField`, ensure `fields` includes it.                                                                                    |
-| `fieldsCode`          | `Record<string, string>`           | Per-field code override (highest priority over record value and `defaultCode`).                                                                                                                                                           |
-| `skipDynamicResolver` | `boolean`                          | When `true`, disables recursive dynamic-field evaluation for fetched records (useful for debugging or performance).                                                                                                                       |
-| `lang`                | `string`                           | Used by CMS helpers (`translate`, `getImage`).                                                                                                                                                                                            |
-| `cmsOfTypes`          | `{ page?, localization?, image? }` | Type IDs for CMS helpers. For system CMS tables, use `CmsOfTypeEnum.Page` / `CmsOfTypeEnum.Localization` / `CmsOfTypeEnum.Image` (stable IDs).                                                                                            |
-| `slug`                | `string[]`                         | URL path segments (after the lang prefix). Used by page routing logic in `dynamicData`.                                                                                                                                                  |
-| `params`              | `Record<string, string>`           | Resolved entity IDs for dynamic slug segments. Keys match the param names from `paramsCollectionMap` (e.g. `{ articleId: "1234-..." }`). Available in `dynamicData`. Use `$$args.params.articleId` to access.                           |
-| `searchParams`        | `Record<string, string>`           | Current URL query parameters. Available in `dynamicData` for route/query-dependent server-side data.                                                                                                                                      |
+| Key | Description |
+|---|---|
+| `fields` | Evaluate only listed dynamic fields |
+| `fieldsCode` | Per-field code override |
+| `skipDynamicResolver` | Skip nested dynamic evaluation |
+| `lang` | Language for CMS helpers |
+| `cmsOfTypes` | `{ page?, localization?, image? }` type ids — use `"cmspage"`, `"cmslocalization"`, `"filedocument"` (or image id used by the workspace) |
+| `slug` | Path segments after lang |
+| `params` | Resolved entity ids from `paramsCollectionMap` |
+| `searchParams` | Query string map |
 
 ---
 
-## Dynamic field patterns
+## Patterns
 
-**A) Read dynamic args safely**
+**A) Safe args**
 
 ```js
 const lang = $$std.getDynamicArg("lang", "en");
@@ -224,56 +140,51 @@ const recordId = $$std.getDynamicArg("recordId");
 if (!recordId) return null;
 ```
 
-**B) Translation lookups**
+**B) Translations**
 
 ```js
-const copies = $$std.translate("blocktype_" + $$self.id);
-({ copies });
+({ copies: $$std.translate("blocktype_" + $$self.id) });
 ```
 
-**C) Fetch a single record**
+(Platform wraps block-type `defaultConfig` to inject `copies` itself — user code usually returns non-copy config only. See `turbofy-apps`.)
+
+**C) Single record**
 
 ```js
-const product = $$std.getRecord("tbl_product", productId, {
-  dynamicArgs: $$args,
-});
+const product = $$std.getRecord("TABLE_ID", productId, { dynamicArgs: $$args });
 ({ product });
 ```
 
-**D) Fetch a list with pagination**
+**D) List + pagination**
 
 ```js
-const result = $$std.listRecords("tbl_product", { limit: 10 }, true);
+const result = $$std.listRecords("TABLE_ID", { limit: 10 }, true);
 ({ products: result.items, nextToken: result.nextToken });
 ```
 
-**E) Client-side filtering (no server-side filter)**
+**E) Client-side filter**
 
 ```js
-const allProducts = $$std.listRecords("tbl_product", { limit: 100 });
-const featured = allProducts.filter((p) => p.featured === true);
-({ featured });
+const all = $$std.listRecords("TABLE_ID", { limit: 100 });
+({ featured: all.filter((p) => p.featured === true) });
 ```
 
-**F) Prefer serializable shapes** — Return plain objects/arrays/strings/numbers/booleans/null. Avoid functions, Dates, class instances, DOM APIs (not available), cyclic refs.
+**F) Serializable only** — plain objects/arrays/scalars/null. No functions, Dates, DOM, cycles.
+
+Resolve **table ids** via `workspace_get` → `schema.types[].id` — never table names.
 
 ---
 
 ## Debugging checklist
 
-- If the field returns `null` unexpectedly:
-  - Check syntax (missing commas, stray trailing characters).
-  - Guard missing args (`recordId`, `slug`, etc).
-  - Temporarily simplify to a constant object and add pieces back.
-- If nested records behave oddly:
-  - Try `skipDynamicResolver: true` in dynamicArgs for nested fetches.
-- If `$$self.someField` is `undefined`:
-  - Ensure the query included it via `dynamicArgs.fields`.
+- Unexpected `null`: syntax, missing args, simplify to a constant then rebuild.
+- Nested weirdness: try `skipDynamicResolver: true`.
+- `$$self.someField` undefined: include it in `dynamicArgs.fields`.
 
 ---
 
 ## See also
 
-- **`turbofy-platform`** — platform orientation, workspaces & environments, the full MCP tool surface and core rules, the schema workflow, and the data-builder DSL (useful when a dynamic field references a workspace table by `SomeTable.id`).
-- **`turbofy-apps`** — Apps CMS data model (where dynamic fields appear on `Page.localizedConfig`, `BuildingBlockType.defaultConfig`/`defaultDynamicData`, `BuildingBlock.config`/`dynamicData`), the `Turbofy_app_*` workflow, the auto-injected `copies` mechanism.
-- **`turbofy-blocks`** — when and how to push state into `dynamicData` versus client-side `@/api` hooks; how `config.copies` is consumed in the React component; `$$std.batchLink` usage examples.
+- **`turbofy-platform`** — schema JSON (`workspace_get`), CMS ofTypes.
+- **`turbofy-apps`** — where dynamic fields hang on the app manifest; `app_push`; auto-injected `copies`.
+- **`turbofy-blocks`** — `config.copies` / `dynamicData` vs client hooks.
