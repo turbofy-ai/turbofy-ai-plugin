@@ -1,8 +1,9 @@
 {
   "mcpServers": {
     "turbofy": {
-      "url": "https://tdsbhitua7.execute-api.eu-central-1.amazonaws.com/mcp",
-      "description": "Turbofy MCP (HTTP) — discover workspaces, edit schema/apps/flows as JSON, edit block sources in a remote build session"
+      "command": "npx",
+      "args": ["-y", "@turbofy-ai/mcp@latest"],
+      "description": "Turbofy MCP server — build apps, edit pages and blocks, manage workspace data, and push changes to the Turbofy platform"
     }
   }
 }
