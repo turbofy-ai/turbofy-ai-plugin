@@ -1,0 +1,9 @@
+{
+  "$schema": "https://cursor.com/schemas/mcp.json",
+  "mcpServers": {
+    "turbofy-http": {
+      "url": "https://mcp.alpha.turbofy.com/mcp",
+      "description": "Turbofy HTTP MCP — discover workspaces, edit schema/apps/flows as JSON, edit block sources in a remote build session"
+    }
+  }
+}

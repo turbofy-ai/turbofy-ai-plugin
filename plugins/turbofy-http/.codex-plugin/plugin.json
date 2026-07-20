@@ -1,0 +1,30 @@
+{
+  "name": "turbofy-http",
+  "version": "0.0.8",
+  "description": "Turbofy HTTP MCP plus guidance skills for schema/apps/flows as JSON and remote block build sessions.",
+  "author": {
+    "name": "Turbofy",
+    "email": "hello@turbofy.com"
+  },
+  "license": "MIT",
+  "keywords": ["turbofy", "mcp", "apps", "cms", "blocks", "http"],
+  "skills": "./skills/",
+  "agents": "./agents/",
+  "mcpServers": "./.mcp.json",
+  "interface": {
+    "displayName": "Turbofy HTTP",
+    "shortDescription": "Turbofy HTTP MCP and app-building skills.",
+    "longDescription": "Adds the Turbofy HTTP MCP plus skills for schema/apps/flows as JSON, remote block sessions, dynamic fields, and platform workflows.",
+    "developerName": "GraphApi.io GmbH",
+    "category": "Developer Tools",
+    "capabilities": ["MCP", "Skills"],
+    "defaultPrompt": [
+      "Help me build a Turbofy app.",
+      "Add a new page to my Turbofy app.",
+      "Build a product listing section for my Turbofy app."
+    ],
+    "brandColor": "#14B8A6",
+    "composerIcon": "./assets/turbofy-ai-logo.svg",
+    "logo": "./assets/turbofy-ai-logo.svg"
+  }
+}
