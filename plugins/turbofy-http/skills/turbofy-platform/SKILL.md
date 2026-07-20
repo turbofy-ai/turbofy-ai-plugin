@@ -58,7 +58,7 @@ A **workspace** is the unit of isolation. It owns a data schema, records, apps, 
 
 **Always pass both `orgId` and `workspaceId`.** The MCP does not track an "active workspace". Discover IDs with `list_organizations` and `list_workspaces`.
 
-The bundled plugin currently points at the **alpha HTTP MCP**. When production is deployed, the URL in the plugin `mcp.json` will be swapped — tool names and shapes stay the same.
+The bundled plugin points at the **production HTTP MCP** (`https://mcp.turbofy.com/mcp`).
 
 There is **no local file root**. Do not create or edit files under `~/.turbofy`. Schema, apps, and flows are edited as JSON through MCP tools. Block React sources are edited inside a remote build session (`block_type_*` tools).
 

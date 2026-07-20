@@ -2,7 +2,7 @@
   "name": "turbofy-http",
   "displayName": "Turbofy HTTP",
   "description": "Turbofy HTTP MCP plus guidance skills for schema/apps/flows as JSON and remote block build sessions.",
-  "version": "0.0.8",
+  "version": "0.0.9",
   "author": {
     "name": "Turbofy",
     "email": "hello@turbofy.com"

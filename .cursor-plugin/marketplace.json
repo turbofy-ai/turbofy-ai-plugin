@@ -5,7 +5,7 @@
     "email": "hello@turbofy.com"
   },
   "metadata": {
-    "description": "Turbofy AI toolkit plugins for Cursor — classic local MCP and the new HTTP MCP, plus skills for building apps, block types, and dynamic fields."
+    "description": "Turbofy AI toolkit plugins for Cursor \u2014 classic local MCP and the new HTTP MCP, plus skills for building apps, block types, and dynamic fields."
   },
   "plugins": [
     {
@@ -13,20 +13,6 @@
       "displayName": "Turbofy",
       "source": "./plugins/turbofy",
       "description": "Turbofy MCP integration (local @turbofy-ai/mcp) plus guidance skills for building apps, block types, and dynamic fields.",
-      "version": "0.0.7",
-      "author": {
-        "name": "Turbofy",
-        "email": "hello@turbofy.com"
-      },
-      "license": "MIT",
-      "homepage": "https://github.com/graphapi-io/turbofy-ai-plugin",
-      "keywords": ["turbofy", "mcp", "apps", "cms", "blocks"]
-    },
-    {
-      "name": "turbofy-http",
-      "displayName": "Turbofy HTTP",
-      "source": "./plugins/turbofy-http",
-      "description": "Turbofy HTTP MCP plus guidance skills for schema/apps/flows as JSON and remote block build sessions.",
       "version": "0.0.8",
       "author": {
         "name": "Turbofy",
@@ -34,7 +20,34 @@
       },
       "license": "MIT",
       "homepage": "https://github.com/graphapi-io/turbofy-ai-plugin",
-      "keywords": ["turbofy", "mcp", "apps", "cms", "blocks", "http"]
+      "keywords": [
+        "turbofy",
+        "mcp",
+        "apps",
+        "cms",
+        "blocks"
+      ]
+    },
+    {
+      "name": "turbofy-http",
+      "displayName": "Turbofy HTTP",
+      "source": "./plugins/turbofy-http",
+      "description": "Turbofy HTTP MCP plus guidance skills for schema/apps/flows as JSON and remote block build sessions.",
+      "version": "0.0.9",
+      "author": {
+        "name": "Turbofy",
+        "email": "hello@turbofy.com"
+      },
+      "license": "MIT",
+      "homepage": "https://github.com/graphapi-io/turbofy-ai-plugin",
+      "keywords": [
+        "turbofy",
+        "mcp",
+        "apps",
+        "cms",
+        "blocks",
+        "http"
+      ]
     }
   ]
 }
