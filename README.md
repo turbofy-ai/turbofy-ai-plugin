@@ -99,7 +99,7 @@ Copy [`skills/`](skills/) into `.opencode/skills/` or `~/.config/opencode/skills
   "mcp": {
     "turbofy-http": {
       "type": "remote",
-      "url": "https://tdsbhitua7.execute-api.eu-central-1.amazonaws.com/mcp",
+      "url": "https://mcp.alpha.turbofy.com/mcp",
       "enabled": true
     }
   }

@@ -1,7 +1,7 @@
 {
   "mcpServers": {
     "turbofy-http": {
-      "url": "https://tdsbhitua7.execute-api.eu-central-1.amazonaws.com/mcp",
+      "url": "https://mcp.alpha.turbofy.com/mcp",
       "description": "Turbofy HTTP MCP — discover workspaces, edit schema/apps/flows as JSON, edit block sources in a remote build session"
     }
   }
