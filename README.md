@@ -99,7 +99,7 @@ Copy [`plugins/turbofy/skills/`](plugins/turbofy/skills/) into `.opencode/skills
   "mcp": {
     "turbofy-http": {
       "type": "remote",
-      "url": "https://mcp.alpha.turbofy.com/mcp",
+      "url": "https://mcp.turbofy.com/mcp",
       "enabled": true
     }
   }
