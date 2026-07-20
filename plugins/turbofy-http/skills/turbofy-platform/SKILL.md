@@ -146,7 +146,7 @@ Schema is **JSON**, not a TypeScript DSL.
 
 - **Types omitted from the pushed schema are DELETED.** Always start from `workspace_get` output; never push a partial types array.
 - **Ids:** existing types/fields keep their `id`. New types/fields/enums should omit `id` (server assigns). To **rename**, keep the same `id` and change `name` — matching is by id, not name.
-- **Parents before children.** `parents.first` / `parents.second` reference parent **table names** that must exist in `types`.
+- **Parents.** `parents.first` / `parents.second` reference a parent table that must exist in `types`. The order of the `types` array doesn't matter — matching is by reference, not position.
 - **Default fields.** Tables already have `id` (`@connector`), `createdAt`, `updatedAt` — do not invent duplicates when editing an existing table; new tables should include the usual connector/`createdAt`/`updatedAt` fields consistent with sibling tables in the same workspace.
 - **Enums** live in `schema.enums` as `{ name, values: string[] }`. Field type for an enum field is the enum **name** (e.g. `"SignalStatus"`).
 

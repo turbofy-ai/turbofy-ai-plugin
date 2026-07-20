@@ -49,7 +49,6 @@ Returns the record or `null`.
 |---|---|
 | `dynamicArgs` | Pass through for nested dynamic fields — **always pass `$$args`** when needed |
 | `normalize` | Default `true` |
-| `limit` | Forwarded to provider |
 
 ```js
 const product = $$std.getRecord("tbl_abc", productId, { dynamicArgs: $$args });
@@ -76,7 +75,7 @@ const recent = $$std.listRecords("tbl_abc", {
 
 ### `$$std.listRecordsByParent(tableId, parentTableId, parentRecordId, options?, withToken?)`
 
-Same options/return shape as `listRecords`, scoped by parent.
+Scoped by parent. Same return shape as `listRecords`; options are `cursor`, `limit`, `dynamicArgs`, `normalize`, `sortOrder`. **`sortRange` is silently ignored here** (only `listRecords` implements it) — filter/sort client-side instead.
 
 ### `$$std.batchGetRecords(tableId, recordIds, options?)`
 
@@ -101,7 +100,7 @@ Many translations in one call → array aligned to `entries`.
 
 ### `$$std.getImage(imageId)`
 
-→ `{ url, height, width }` or `null`.
+→ the full image record with `width` / `height` merged in from its metadata (so `url`, `width`, `height` plus the record's other fields), or `null`.
 
 ### `$$std.batchLink(entries)`
 
@@ -112,6 +111,8 @@ Resolves page `localizedConfig.canonicalPath` values.
 - Returns `Array<string | null>`
 
 Use system page ofType `"cmspage"` in surrounding CMS config; pass real page record ids as `pageId`.
+
+A single-page variant `$$std.link(pageId, params?)` also exists; prefer `batchLink` when resolving several links.
 
 ---
 

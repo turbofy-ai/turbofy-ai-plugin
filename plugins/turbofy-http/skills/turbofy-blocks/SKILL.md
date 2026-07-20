@@ -67,7 +67,7 @@ block-types/<Name>/
 ## 2) `IBuildingBlockProps`
 
 ```ts
-export interface IBuildingBlockProps<TConfig = unknown> {
+export type IBuildingBlockProps<TConfig = any> = PropsWithChildren<{
   blockId: string;
   locale: string;
   config: TConfig;
@@ -76,7 +76,7 @@ export interface IBuildingBlockProps<TConfig = unknown> {
   params: Record<string, string>;
   pageId: string;
   slug: string[];
-}
+}>;
 ```
 
 | Prop | Notes |

@@ -19,7 +19,7 @@ A flow is: **triggers** (when it runs) + a **linked list of steps** (what runs).
 Runtime:
 
 - DynamoDB stream events match `TABLE_DATA_CHANGE` triggers by `tableId` (case-insensitive) + operation, then optional JS `condition` against trigger data.
-- On match, start at `startStep` with output map `{ [triggerKey]: triggerData }`. MODIFY → `{ old, new }`; INSERT/REMOVE → the record; manual → `{}`.
+- On match, start at `startStep` with output map `{ [triggerKey]: triggerData }`. MODIFY → `{ old, new }`; INSERT/REMOVE → the record; MANUAL → `{}`.
 - Each step resolves params (static / JS / secret), runs, stores result under its step name, then follows `nextStep`.
 - Per-step skip/continue conditions are JS against the output map.
 - `debug: true` → verbose logs; `disabled: true` → off.
@@ -32,7 +32,7 @@ Runtime:
 
 | Tool | Purpose |
 |---|---|
-| `flow_list` | Summaries: `flowId`, name, trigger/step counts |
+| `flow_list` | Summaries: `flowId`, name, trigger/step counts, `disabled`, `createdAt` / `updatedAt` |
 | `flow_get` | Full declaration JSON |
 | `flow_upsert` | Create or update from declaration. **`dryRun` defaults to `true`**. Omit `flowId` to create (pass `name`). Set `dryRun: false` to apply. |
 
@@ -104,7 +104,7 @@ Notes:
 - Dynamic JS params: put the code string in `params` and mark the path in `paramsConfig` with `{ "language": "js", "type": "logic" }`.
 - Object literals from JS must be wrapped: `"({ a: 1 })"`.
 - `tableId` / `ofType` are often normalized to **lowercase** in stored declarations — match what `flow_get` returns; compare case-insensitively to `workspace_get` → `schema.types[].id`.
-- Trigger variants include `TABLE_DATA_CHANGE`, `manual`, and `schedule` (see existing flows / dry-run errors for exact fields).
+- Trigger variants are **uppercase**: `TABLE_DATA_CHANGE`, `MANUAL`, `SCHEDULE` — lowercase values won't match at runtime (see existing flows / dry-run errors for exact fields).
 
 ### `flow_upsert` call
 
@@ -140,7 +140,7 @@ Logic & integration: `logic`, `httpRequest`, `cloudFunction`, `notifyWebSocket`,
 
 AI: `genericAI`, `openAIImageGeneration`, `elevenLabsTTS`.
 
-Credential params (`apiKey`, auth headers, etc.) must use **secret references**, never plaintext. Prefer copying the secret marker shape from an existing `flow_get` in the workspace, or use the dry-run validator.
+Credential params (`apiKey`, auth headers, etc.) should use **secret references**, never plaintext. The validator only enforces this for `apiKey` on `genericAI` / `googleSearch` / `openAIImageGeneration` / `elevenLabsTTS` — a plaintext auth header on `httpRequest` passes validation, so keep it secret-marked by convention. Prefer copying the secret marker shape from an existing `flow_get` in the workspace, or use the dry-run validator.
 
 ---
 
@@ -159,9 +159,9 @@ Credential params (`apiKey`, auth headers, etc.) must use **secret references**,
 Errors include:
 
 - Missing `startStep` / `nextStep` targets; cycles in the step chain.
-- **Self-retrigger:** a write step whose `ofType` matches the flow's own `TABLE_DATA_CHANGE` trigger (same table + matching operation). A trigger `condition` that provably stops recursion may downgrade this to a warning.
+- **Self-retrigger:** a write step whose `ofType` matches the flow's own `TABLE_DATA_CHANGE` trigger (same table + matching operation). Any non-empty trigger `condition` downgrades this to a warning (presence is checked, not whether it actually stops recursion — make sure it does).
 - **Cross-flow cycles** between flows.
-- Invalid / missing secret ids; credential params as plain strings.
+- Invalid / missing secret ids; plaintext values in the enforced `apiKey` params.
 
 Always dry-run first.
 

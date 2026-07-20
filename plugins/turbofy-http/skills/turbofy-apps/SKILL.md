@@ -31,26 +31,27 @@ In dynamic-field code, workspace tables are referenced **by table id** (`$$std.g
 
 #### App
 
-Top-level container. Key fields: `id`, `name`, `settings` (includes `i18n`, optional `auth`). Has many Pages.
+Top-level container. Key fields: `id`, `name`, `settings` (includes `i18n`, optional `auth`), optional `slugConfig` — `{ [workspaceTypeId]: { pattern: string } }`, validated against workspace type ids. Has many Pages.
 
 #### Page
 
 A route. Key fields:
 
 - `id`, `name`
-- `slugConfig` (`Json`) — `{ "<lang>": { "slug": "/path/[param]" }, "paramsCollectionMap": { "<param>": { "ofType": "<table-ID>", "slugField": "<field>" } } }`. For dynamic pages `paramsCollectionMap` is required; **`ofType` must be the table ID**.
+- `slugConfig` (`Json`) — `{ "<lang>": { "slug": "/path/[param]" }, "paramsCollectionMap": { "<param>": { "ofType": "<table-ID>", "slugField": "<field>" } }, "visibility": "user" }`. `paramsCollectionMap` is required on **every** page (use `{}` for static pages); **`ofType` must be the table ID**. `slugField` is optional but must name an existing `String` / `Email` / `Url` field on that type.
+- **`visibility` lives INSIDE `slugConfig`**, not on the page object — a top-level `page.visibility` is silently stripped on push. Values: `"public"` (default when absent) | `"authenticated"` | `"group"` | `"user"`. `"user"` is the common “requires login” value.
 - `localizedConfig` (optional string on the manifest) — `@dynamic_field` JS for page metadata.
-- Optional `visibility` — `"public"` (default) | `"authenticated"` | `"group"` | `"user"`. `"user"` is the common “requires login” value.
-- `blocks` — ordered instances (`id`, `blockTypeId`, `position`, optional `config` / `dynamicData` / `localizations`)
+- `localizations` — `{ [lang]: { [key]: string } }` page-level content. `app_get` seeds an entry for every app locale; `app_push` upserts them as `{lang}_page_{pageId}` rows.
+- `blocks` — ordered instances (`id`, `blockTypeId`, `position`, optional `config` / `dynamicData` / `localizations`). `position` must be unique within the page.
 
 #### BuildingBlockType
 
 Category of section. On the manifest:
 
-- `id`, `name` (required)
+- `id`, `name` (required; names must be unique across the app)
 - `defaultConfig` / `defaultDynamicData` — server-side JS strings; see `turbofy-dynamic-fields`
 - `localizations` — `{ [lang]: { [copyKey]: string } }` (required on push)
-- `sourceCodeUrl` / `compiledCodeUrl` — published artifacts (updated by `block_type_push`, not `app_push`)
+- `sourceCodeUrl` / `compiledCodeUrl` — published artifacts. `block_type_push` writes them remotely, but **`app_push` also reconciles them from the manifest** — pushing a manifest fetched *before* a `block_type_push` reverts the URLs to the stale artifacts. After `block_type_push`, re-run `app_get` (or copy the new URLs into your manifest) before any further `app_push`.
 
 #### BuildingBlock
 
@@ -110,12 +111,20 @@ There is **no** local app directory and **no** `app_pull`.
 
 ### Critical `app_push` rules
 
-- **Start from a full `app_get`.** The reconciler diffs the manifest against remote state. Entities **omitted** from `pages` / `blocks` / `blockTypes` are **deleted**.
+- **Start from a full `app_get`.** The reconciler diffs the manifest against remote state. Entities **omitted** from `pages` / `blocks` / `blockTypes` are **deleted** — and deletes cascade: removing a page deletes its blocks and localization rows; removing a block type deletes its block instances.
 - `appId` must match `manifest.app.id`.
 - Validates slug type refs, block→blockType refs, and dynamic-field JS; applies **copies guards** on `defaultConfig` / instance `config` (you supply the user JS; the platform wraps/merges `copies`).
 - Prefer **unwrapped** user `defaultConfig` when editing, e.g. `return ({ signalTableId: "wGluy5" });` — do not hand-maintain the `/* @graphapi-io/wrap:bt-copies-* */` wrapper; push re-applies it.
-- **React source compile/upload is separate:** after adding a new block type (or changing `index.tsx`), use `block_type_open` → `block_type_fs_*` → `block_type_check` → `block_type_push` (`turbofy-blocks`).
+- **React source compile/upload is separate:** after adding a new block type (or changing `index.tsx`), use `block_type_open` → `block_type_fs_*` → `block_type_check` → `block_type_push` (`turbofy-blocks`). Then re-run `app_get` before your next `app_push`, so the manifest carries the new `sourceCodeUrl` / `compiledCodeUrl` (a stale manifest reverts them).
 - Always dry-run before apply.
+
+### Slug validation rules (enforced on push)
+
+- Slugs start with `/`, no trailing slash; segments are `[a-z0-9-]+` or `[paramName]`.
+- Every locale in `i18n.locales` needs a slug entry on **every** page; locale keys outside `i18n.locales` are rejected.
+- Per locale: exactly **one root page** with slug `"/"`; every other slug's **parent path must exist** (e.g. `/shop/items` requires a page at `/shop`); no duplicate slugs.
+- Every `[param]` in a slug needs a `paramsCollectionMap` entry **and** every `paramsCollectionMap` entry must be used in each locale's slug.
+- `slugConfig.visibility` (when present) must be `public` / `authenticated` / `group` / `user`.
 
 ### Create an app
 
@@ -130,6 +139,7 @@ Schema is workspace-scoped: `workspace_get` → edit JSON → `workspace_schema_
 
 - App locales: `app.settings.i18n` = `{ locales: string[], default: string }`.
 - Block type copies: `blockTypes[].localizations` — keep a key for every locale in `i18n.locales` (empty string placeholders OK).
+- Page content: `pages[].localizations` — pushed as `{lang}_page_{pageId}` rows; `app_get` seeds an entry per app locale.
 - Instance overrides: `pages[].blocks[].localizations` only when needed.
 - At runtime, `config.copies` is the merged dictionary (active locale over `i18n.default`; instance over type). React must read strings from `config.copies` only.
 
@@ -137,7 +147,7 @@ Schema is workspace-scoped: `workspace_get` → edit JSON → `workspace_schema_
 
 Set on the manifest (then `app_push`):
 
-- Page `visibility`: `"public"` | `"authenticated"` | `"group"` | `"user"`.
+- Page visibility: set `slugConfig.visibility` on the page (alongside the locale slug entries): `"public"` | `"authenticated"` | `"group"` | `"user"`.
 - App `settings.auth`: `{ enabled?, allowSignup?, signupFields?, redirectPageId?, loginPageId? }`.
 
 Login/signup pages must remain publicly reachable. Login/Signup system blocks call `/api/auth/login` and `/api/auth/signup`.
