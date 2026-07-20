@@ -89,7 +89,7 @@ OpenCode doesn't yet support installing this kind of plugin in one click, so you
 }
 ```
 
-Copy [`skills/`](skills/) into `.opencode/skills/` or `~/.config/opencode/skills/`.
+Copy [`plugins/turbofy/skills/`](plugins/turbofy/skills/) into `.opencode/skills/` or `~/.config/opencode/skills/`.
 
 **Turbofy HTTP**
 

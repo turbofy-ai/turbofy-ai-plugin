@@ -11,7 +11,7 @@
     {
       "name": "turbofy-plugin",
       "displayName": "Turbofy",
-      "source": "./",
+      "source": "./plugins/turbofy",
       "description": "Turbofy MCP integration (local @turbofy-ai/mcp) plus guidance skills for building apps, block types, and dynamic fields.",
       "version": "0.0.7",
       "author": {
