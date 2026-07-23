@@ -19,7 +19,7 @@ A flow is: **triggers** (when it runs) + a **linked list of steps** (what runs).
 Runtime:
 
 - DynamoDB stream events match `TABLE_DATA_CHANGE` triggers by `tableId` (case-insensitive) + operation, then optional JS `condition` against trigger data.
-- On match, start at `startStep` with output map `{ [triggerKey]: triggerData }`. MODIFY → `{ old, new }`; INSERT/REMOVE → the record; MANUAL → `{}`.
+- On match, start at `startStep` with output map `{ [triggerKey]: triggerData }`. MODIFY → `{ old, new }`; INSERT/REMOVE → the record; MANUAL → `{}`; SCHEDULE → `{ scheduledTime }` (ISO timestamp of the scheduled firing time).
 - Each step resolves params (static / JS / secret), runs, stores result under its step name, then follows `nextStep`.
 - Per-step skip/continue conditions are JS against the output map.
 - `debug: true` → verbose logs; `disabled: true` → off.
@@ -106,6 +106,44 @@ Notes:
 - `tableId` / `ofType` are often normalized to **lowercase** in stored declarations — match what `flow_get` returns; compare case-insensitively to `workspace_get` → `schema.types[].id`.
 - Trigger variants are **uppercase**: `TABLE_DATA_CHANGE`, `MANUAL`, `SCHEDULE` — lowercase values won't match at runtime (see existing flows / dry-run errors for exact fields).
 
+### Trigger variants
+
+- `TABLE_DATA_CHANGE` — `{ variant, name, tableId, operation: "INSERT"|"MODIFY"|"REMOVE", condition? }`. Trigger data: the record (INSERT/REMOVE) or `{ old, new }` (MODIFY).
+- `MANUAL` — `{ variant, name }`. Trigger data: `{}`.
+- `SCHEDULE` — recurring run via AWS EventBridge Scheduler (see below).
+
+#### SCHEDULE trigger
+
+```json
+{
+  "variant": "SCHEDULE",
+  "name": "nightly",
+  "cron": "0 9 * * ? *",
+  "timezone": "Europe/Berlin"
+}
+```
+
+Fields (copy the exact shape from an existing `flow_get` / confirm via dry-run):
+
+- Exactly **one of** `cron` or `rate` — never both.
+  - `cron`: AWS **6-field** cron (see below).
+  - `rate`: `{ "value": <positive integer>, "unit": "minutes" | "hours" | "days" }` — for simple fixed intervals, e.g. every 10 minutes → `{ "value": 10, "unit": "minutes" }`.
+- `timezone`: IANA tz (e.g. `"Europe/Berlin"`), **only valid with `cron`**; defaults to UTC.
+- `startDate` / `endDate`: ISO 8601 date or datetime. Won't fire before `startDate` (date-only = midnight UTC); stops after `endDate`, which must be after `startDate`.
+- `condition`: optional JS string, same as other triggers.
+
+Trigger data is `{ scheduledTime }` — the ISO timestamp of the *scheduled* (not actual) firing time; reference it via `state.<triggerKey>.scheduledTime`.
+
+**AWS 6-field cron** — fields are `minutes hours day-of-month month day-of-week year` (NOT the standard 5-field crontab):
+
+- Exactly one of day-of-month / day-of-week must be `?` when the other is specified.
+- Day-of-week is `1`–`7` (1 = Sunday) or `SUN`–`SAT`; month is `1`–`12` or `JAN`–`DEC`.
+- Examples: daily 09:00 → `"0 9 * * ? *"` · every Monday noon → `"0 12 ? * MON *"` · 1st & 15th at 08:30 → `"30 8 1,15 * ? *"`.
+
+**Lifecycle:** schedules reconcile automatically on upsert (DynamoDB stream → EventBridge Scheduler) — no extra MCP steps. Disabling the flow disables its schedules; deleting the flow or trigger deletes them; a schedule past its `endDate` is removed and never fires again.
+
+**Web-editor interplay:** the visual schedule builder only represents a subset of cron — a single minute, an explicit list of hours, and either any-day / specific weekdays / specific days-of-month (months and year must be `*`). Expressions outside that subset (ranges `9-17`, steps `0/5`, `L`/`W`/`#` markers, `*` hours, month/year restrictions) still validate and run, but show as a read-only "advanced schedule". Prefer `rate` for simple intervals and builder-representable crons (e.g. `"30 8 ? * MON,FRI *"`) so users can keep editing visually.
+
 ### `flow_upsert` call
 
 ```json
@@ -162,6 +200,7 @@ Errors include:
 - **Self-retrigger:** a write step whose `ofType` matches the flow's own `TABLE_DATA_CHANGE` trigger (same table + matching operation). Any non-empty trigger `condition` downgrades this to a warning (presence is checked, not whether it actually stops recursion — make sure it does).
 - **Cross-flow cycles** between flows.
 - Invalid / missing secret ids; plaintext values in the enforced `apiKey` params.
+- **Schedule triggers:** both `cron` and `rate` set; malformed cron; `timezone` without `cron`, or an unknown tz; `rate.value` not a positive integer; unparseable `startDate`/`endDate`; `endDate` ≤ `startDate`. A `SCHEDULE` trigger with neither `cron` nor `rate` is only a **warning** — it round-trips but never fires.
 
 Always dry-run first.
 
