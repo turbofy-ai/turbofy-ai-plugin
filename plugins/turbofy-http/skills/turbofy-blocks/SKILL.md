@@ -84,12 +84,13 @@ export type IBuildingBlockProps<TConfig = any> = PropsWithChildren<{
 | `locale` | **Only** source of language — never URL / navigator |
 | `config` | Static config; **UI strings at `config.copies`** |
 | `dynamicData` | Optional SSR snapshot; if used, handle `undefined` as loading |
-| `searchParams` / `params` / `slug` | From props only — never `window.location` |
+| `searchParams` / `params` / `slug` | From props only — never `window.location`. `searchParams` is the render-time snapshot; for live values after shallow navigation use `useSearchParams()` from `@/navigation` |
 
 ### Coding rules
 
 - **Copies:** all user-visible text from `config.copies` (flat object). Prefer zod defaults for missing keys. No `t()` helpers. Rare escape: `useTranslations`. Maintain dictionaries in the app manifest (`blockTypes[].localizations`) via `app_push`.
 - **Navigation:** `navigate` / `Link` from `@/navigation` only. Resolve paths with `useLinks` (client) or `$$std.batchLink` (server) — do not hand-build localized URLs.
+- **Query-param state (filters / search / tabs):** `navigate(path, { shallow: true, replace: true })` updates the URL without re-rendering the page; a query-only path (`"?q=shoes"`) keeps the current pathname. Read reactively with `useSearchParams()` from `@/navigation` (returns `Record<string, string>`); the `searchParams` prop remains the render-time snapshot for initial state. Use `replace: true` when syncing rapidly-changing state (typing in a search box) to avoid history spam.
 - **Styling:** Tailwind. Prefer shadcn/ui for interactive primitives.
 - **Loading:** if you read `dynamicData`, skeleton when `undefined`; treat inner `null` as empty/not found. Skeleton footprint ≈ final layout.
 - **Table IDs:** all `@/api` hooks and `$$std` helpers take **table ids** from `workspace_get` → `schema.types[].id`, never table names. System CMS: `"cmspage"`, `"cmslocalization"`, `"filedocument"`, etc.
@@ -136,7 +137,12 @@ See `turbofy-dynamic-fields` for the full `$$std` API.
 
 ```tsx
 import { useListTypes, useLinks, useSearchTypes, useUploadFile } from "@/api";
-import { Link, navigate } from "@/navigation";
+import { Link, navigate, useSearchParams } from "@/navigation";
+
+// URL-synced filter state: read live, write shallow
+const searchParams = useSearchParams();
+const setQuery = (q: string) =>
+  navigate(`?q=${encodeURIComponent(q)}`, { shallow: true, replace: true });
 
 const { data: products } = useListTypes(productTableId);
 const { result: productLinks } = useLinks(
