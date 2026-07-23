@@ -37,7 +37,7 @@ export interface IBuildingBlockProps<TConfig = unknown> {
 | `locale`       | Current language code (e.g. `"en"`, `"de"`). **Always read locale from this prop** — never hardcode or derive it from the URL.         |
 | `config`       | Static block configuration (copies, links, layout). **Copies live at `config.copies`** — always read them from there.                  |
 | `dynamicData`  | Optional server-resolved initial data snapshot. In SSR apps, use this for the initial render and use hooks for later interactions. Blocks that read it **must handle `undefined`**. |
-| `searchParams` | Current URL query parameters as key/value pairs. **Always read query params from this prop** — never parse `window.location` directly. |
+| `searchParams` | Query parameters at render time as key/value pairs. **Never parse `window.location`** — use this prop for initial state, and `useSearchParams()` from `@/navigation` when the block must react to shallow URL updates. |
 | `params`       | Resolved entity IDs for dynamic slug segments (e.g. `{ articleId: "1234-..." }`). Same values as `$$args.params` on the server side.   |
 | `slug`         | URL path segments after the locale prefix.                                                                                             |
 | `pageId`       | ID of the page this block belongs to.                                                                                                  |
@@ -75,6 +75,7 @@ On push, the directory is zipped (without `record.ts`) and uploaded as a `.sourc
   - Even if the block only supports one language today, all text goes through `config.copies` so translations can be added later without code changes.
   - In VERY RARE cases where you can't resolve all your copies upfront, use the `useTranslations` hook.
 - **Navigation**: Always use `navigate` from `@/navigation` for programmatic navigation — never `window.location` or raw `<a>` tags. Read current query parameters from `props.searchParams`, not from `window.location.search`.
+- **Query-param state (filters / search / tabs)**: `navigate(path, { shallow: true, replace: true })` updates the URL without re-rendering the page; a query-only path like `"?q=shoes"` keeps the current pathname. Read query params reactively with `useSearchParams()` from `@/navigation` (returns `Record<string, string>`); `props.searchParams` remains the render-time snapshot for initial state. Use `replace: true` for rapidly-changing state (e.g. typing in a search box) so it doesn't spam browser history.
 - **Slug construction**: Do not build links yourself. Use `useLinks` (client-side) and `$$std.batchLink(...)` (server-side) — these are the only ways to correctly resolve localized paths.
 - **Dynamic data loading state**: `dynamicData` is optional. If a block uses `dynamicData`, it must render a loading skeleton when `dynamicData` is `undefined`. The skeleton must match the final component's footprint as closely as possible (same outer spacing, major grid/column structure, image aspect ratios, heading/text line widths, card counts where reasonable) so the block itself can be used as its Suspense fallback without causing layout jumps. Treat `undefined` as "loading"; treat `null` values inside `dynamicData` as "loaded but empty/not found."
 
@@ -953,9 +954,22 @@ Always use `Link` and `navigate` from `@/navigation` — never raw `<a>` tags or
 ```tsx
 import { Link } from "@/navigation"; // declarative
 import { navigate } from "@/navigation"; // imperative (e.g. after form submit)
+import { useSearchParams } from "@/navigation"; // reactive query params
 ```
 
 Read `locale`, `slug`, and `searchParams` from `IBuildingBlockProps` — never parse `window.location` directly.
+
+`navigate` accepts options for URL-synced client state:
+
+```tsx
+// Shallow: update the URL query without re-rendering the page.
+// replace: don't push a history entry (use for filters/search inputs).
+navigate(`?q=${encodeURIComponent(query)}`, { shallow: true, replace: true });
+
+// Read query params reactively — updates when shallow navigation changes them
+// (props.searchParams only reflects the last full render):
+const searchParams = useSearchParams(); // e.g. { q: "shoes", page: "2" }
+```
 
 ```tsx
 export const BuildingBlock = ({
@@ -1057,7 +1071,7 @@ See `turbofy-apps` § "Authentication settings" for full `auth` configuration an
 - **Blocks are self-contained**: A block is either a single `.tsx` file or a directory with an `index.tsx` entry point. Files within a multi-file block directory can import each other, but blocks cannot import files outside their own block boundary or from other blocks.
 - **Always read locale from `props.locale`** — never hardcode it, derive it from the URL, or use `window.navigator.language`. **Never** create `getCurrentLocale()`, `getLocale()`, or similar helper functions.
 - **Always read copies from `config.copies`** — the dsl-builders auto-inject the resolved dictionary into `config.copies`. Provide zod-validated defaults for every copy key. **Never** hardcode user-visible strings inline — every label, heading, placeholder, button text, and error message must come from `config.copies`. Access keys directly (`copies.title`), **never** create `t()` / `translate()` / `useTranslation()` wrapper functions.
-- **Always use `navigate` from `@/navigation`** for programmatic navigation — never `window.location` or raw `<a>` tags. Read query parameters from `props.searchParams`.
+- **Always use `navigate` from `@/navigation`** for programmatic navigation — never `window.location` or raw `<a>` tags. Read query parameters from `props.searchParams`, or `useSearchParams()` when the block updates them shallowly (`navigate(path, { shallow: true })`).
 - **Construct locale-prefixed paths from props** — use `props.locale` and `props.slug` (e.g. `/${locale}/products/${id}`). For server-resolved page links, use `$$std.batchLink(...)`.
 - `Turbofy_app_push` automatically compiles and typechecks blocks — you cannot skip this step.
 - Blocks without an `id` in the DSL file are treated as new (create). Blocks with an `id` that no longer appear are deleted.
