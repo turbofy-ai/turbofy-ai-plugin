@@ -37,6 +37,7 @@ Organization
     └── App(s)                                ← JSON via app_get / app_push / app_init (list via data_list cmsapp)
         ├── Pages + BuildingBlocks            ← edited in the app manifest, pushed with app_push
         ├── BuildingBlockTypes (metadata)     ← same manifest / app_push
+        ├── Persistent Markdown documents     ← metadata via app_get; content via app_document_*
         └── React sources                     ← remote session via block_type_* tools
 ```
 
@@ -89,6 +90,7 @@ Tool names are unprefixed (`list_workspaces`, `workspace_get`, …). Hosts may s
 **Apps** (details in `turbofy-apps`):
 
 - `app_get`, `app_init`, `app_push` (list apps with `data_list` + `ofType: "cmsapp"`)
+- `app_document_get`, `app_document_put`, `app_document_delete` (`app_get.documents` replaces a separate list call)
 
 **Block type sources** (details in `turbofy-blocks`):
 
@@ -120,6 +122,7 @@ Tool names are unprefixed (`list_workspaces`, `workspace_get`, …). Hosts may s
   | BuildingBlockType | `"cmsbuildingblocktype"` |
   | BuildingBlock | `"cmsbuildingblock"` |
   | Localization | `"cmslocalization"` |
+  | AppDocument | `"appdocument"` |
   | EntityLocalization | `"localization"` |
   | Api | `"cmsapi"` |
   | FileDocument | `"filedocument"` |
@@ -195,7 +198,7 @@ Use `data_*` for:
 
 `file_upload` creates a `filedocument` usable in later `data_*` calls.
 
-For **app structure** (pages, block instances, block-type metadata/copies/`defaultConfig`), prefer `app_get` → edit → `app_push` — see `turbofy-apps`. For **block React sources**, use `block_type_*` — see `turbofy-blocks`. Do not round-trip app CMS entities via `data_*` when `app_push` can do it.
+For **app structure** (pages, block instances, block-type metadata/copies/`defaultConfig`), prefer `app_get` → edit → `app_push` — see `turbofy-apps`. For **persistent app documentation**, discover metadata in `app_get.documents` and use `app_document_get` / `app_document_put` / `app_document_delete`; there is no `app_document_list`. For **block React sources**, use `block_type_*` — see `turbofy-blocks`. Do not round-trip app CMS entities via `data_*` when a specialized app tool covers the operation.
 
 ---
 
