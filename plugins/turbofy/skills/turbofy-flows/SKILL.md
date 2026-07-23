@@ -18,7 +18,7 @@ A flow is a workspace automation: **triggers** that decide when it runs, and a *
 Execution model (what actually happens at runtime):
 
 - A DynamoDB stream event (record INSERT / MODIFY / REMOVE) is matched against every flow's `TABLE_DATA_CHANGE` triggers — by `tableId` (case-insensitive) and operation, then by the optional JS `condition` evaluated against the trigger data.
-- On match, execution starts at `startStep` with an **output map** seeded as `{ [triggerKey]: triggerData }`. For MODIFY the trigger data is `{ old, new }`; for INSERT/REMOVE it is the record itself. Manual triggers seed `{}`.
+- On match, execution starts at `startStep` with an **output map** seeded as `{ [triggerKey]: triggerData }`. For MODIFY the trigger data is `{ old, new }`; for INSERT/REMOVE it is the record itself. Manual triggers seed `{}`; schedule triggers seed `{ scheduledTime }` (the ISO timestamp of the scheduled firing time).
 - Each step resolves its params (static values, `js()` code, secrets), runs, and appends its result to the output map under its own step name. Then execution moves to the step's `nextStep` — strictly linear, no branching.
 - `skipIf` (skip this step, keep going) and `continueIf` (stop the whole flow when falsy) are JS conditions evaluated against the output map.
 - Flow runs and per-step logs are recorded as FlowRun / FlowRunLog records; `debug: true` enables verbose step logging. `disabled: true` turns the flow off.
@@ -69,7 +69,10 @@ export const flow = flowBuilder.buildFlow({
       condition: "state.new !== undefined || state.status === 'paid'", // optional JS, evaluated against the trigger data (NOT the output map)
     }),
     manual: flowBuilder.trigger.manual(),      // fired from the dashboard / flowtrigger record
-    nightly: flowBuilder.trigger.schedule(),   // scheduled variant
+    nightly: flowBuilder.trigger.schedule({    // recurring schedule (see "Trigger variants")
+      cron: "0 9 * * ? *",                     // daily at 09:00
+      timezone: "Europe/Berlin",
+    }),
   },
   steps: [
     // executed in array order; each step's nextStep = the following entry
@@ -101,6 +104,49 @@ export const flow = flowBuilder.buildFlow({
 - **Step name = output key.** The first argument of every step factory is both the step's identity and its key in `state` after it runs.
 - **Chaining**: array order defines execution order. `next: "<stepName>"` overrides it; `next: null` ends the flow early. `detachedSteps: [...]` exists only for round-tripping steps unreachable from `startStep` — don't use it for new flows.
 - Conditions (`skipIf`, `continueIf`, trigger `condition`) are **plain JS code strings** (js is the only supported logic language; json-logic is legacy and not supported by the DSL).
+
+### Trigger variants
+
+Three trigger factories. The key you give a trigger in `triggers` is its output key in `state`; `condition` is a plain-JS string evaluated against the trigger data (not the output map).
+
+- `flowBuilder.trigger.tableDataChange({ tableId, operation, condition? })` — fires on a record change. `operation` is `"INSERT" | "MODIFY" | "REMOVE"`. Trigger data: the record (INSERT/REMOVE) or `{ old, new }` (MODIFY).
+- `flowBuilder.trigger.manual()` — fired from the dashboard or a `flowtrigger` record. Trigger data: `{}`.
+- `flowBuilder.trigger.schedule(opts?)` — runs the flow on a recurring schedule via AWS EventBridge Scheduler (see below).
+
+#### schedule(opts?)
+
+```ts
+flowBuilder.trigger.schedule({
+  // exactly one of cron / rate — never both:
+  cron?: string;              // AWS 6-field cron (see below)
+  rate?: { value: number; unit: "minutes" | "hours" | "days" }; // value = positive integer
+  timezone?: string;          // IANA tz e.g. "Europe/Berlin"; ONLY valid with cron; defaults to UTC
+  startDate?: string;         // ISO 8601 date/datetime; does not fire before it (date-only = midnight UTC)
+  endDate?: string;           // ISO 8601 date/datetime; stops firing after it; must be after startDate
+  condition?: string;         // same JS condition support as other triggers
+})
+```
+
+Trigger data is `{ scheduledTime: string }` — the ISO timestamp of the *scheduled* (not actual) firing time; reference it via `state.<triggerKey>.scheduledTime`.
+
+**AWS 6-field cron** — fields are `minutes hours day-of-month month day-of-week year` (NOT the standard 5-field crontab):
+
+- Exactly one of day-of-month / day-of-week must be `?` when the other is specified.
+- Day-of-week is `1`–`7` (1 = Sunday) or `SUN`–`SAT`; month is `1`–`12` or `JAN`–`DEC`.
+- Examples: daily 09:00 → `"0 9 * * ? *"` · every Monday noon → `"0 12 ? * MON *"` · 1st & 15th at 08:30 → `"30 8 1,15 * ? *"`.
+- For simple fixed intervals prefer `rate`: every 10 minutes → `rate: { value: 10, unit: "minutes" }`.
+
+**Validation** (`npm run validate` / push):
+
+- Error: both `cron` and `rate` set; malformed cron; `timezone` set without `cron`, or an unknown tz; `rate.value` not a positive integer; `startDate`/`endDate` that don't parse as ISO dates; `endDate` ≤ `startDate`.
+- Warning (round-trips fine but never fires): a `schedule()` with neither `cron` nor `rate`.
+
+**Runtime & lifecycle:**
+
+- Schedules reconcile **automatically** on push (DynamoDB stream → EventBridge Scheduler) — no extra MCP/CLI steps. Disabling the flow disables its schedules; deleting the flow or the trigger deletes them; a schedule whose `endDate` has passed is removed and never fires again.
+- Requires `@turbofy-ai/app-runtime` **> 0.0.8** in the pulled flows project for the new typings (`startDate`/`endDate`, etc.). If validate/build complains about unknown schedule options, bump this dependency.
+
+**Web-editor interplay:** the visual schedule builder can only represent a subset of cron — a single minute, an explicit list of hours, and either any-day / specific weekdays / specific days-of-month (months and year must be `*`). Expressions outside that subset (ranges like `9-17`, steps like `0/5`, `L`/`W`/`#` markers, `*` hours, month/year restrictions) still validate and run, but appear in the UI as a read-only "advanced schedule". Prefer `rate` for simple intervals and builder-representable crons (e.g. `"30 8 ? * MON,FRI *"`) when you can, so users can keep editing the schedule visually.
 
 ## 4) Dynamic params: js() and the state context
 
