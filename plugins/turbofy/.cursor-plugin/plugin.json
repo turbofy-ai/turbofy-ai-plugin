@@ -8,8 +8,8 @@
     "email": "hello@turbofy.com"
   },
   "logo": "../assets/turbofy-ai-logo.png",
-  "homepage": "https://github.com/graphapi-io/turbofy-ai-plugin",
-  "repository": "https://github.com/graphapi-io/turbofy-ai-plugin",
+  "homepage": "https://github.com/turbofy-ai/turbofy-ai-plugin",
+  "repository": "https://github.com/turbofy-ai/turbofy-ai-plugin",
   "license": "MIT",
   "keywords": ["turbofy", "mcp", "apps", "cms", "blocks"]
 }

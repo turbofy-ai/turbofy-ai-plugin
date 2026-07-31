@@ -21,13 +21,13 @@ For **Claude Code**, **Codex**, and **Cursor**, the installation is the same two
 The repository URL is the same in all three apps:
 
 ```
-https://github.com/graphapi-io/turbofy-ai-plugin
+https://github.com/turbofy-ai/turbofy-ai-plugin
 ```
 
 To test a branch in Claude Code (CLI / slash command), pin a ref:
 
 ```
-graphapi-io/turbofy-ai-plugin@story/http-mcp-skills-rewrite
+turbofy-ai/turbofy-ai-plugin@story/http-mcp-skills-rewrite
 ```
 
 (Do not use `#branch` in the desktop “Add marketplace” URL field — fragments get stripped. Prefer `owner/repo@branch`.)
@@ -42,7 +42,7 @@ Pick your app below for the exact clicks.
 4. Click the **+** icon next to **Personal Plugins**.
 5. Choose **Create Plugin** → **Add marketplace**.
 6. Choose **Add from a repository**.
-7. Click on **Select repository** and paste `https://github.com/graphapi-io/turbofy-ai-plugin` (or `graphapi-io/turbofy-ai-plugin@<branch>`) and click **Sync**.
+7. Click on **Select repository** and paste `https://github.com/turbofy-ai/turbofy-ai-plugin` (or `turbofy-ai/turbofy-ai-plugin@<branch>`) and click **Sync**.
 8. Select **Turbofy** and/or **Turbofy HTTP MCP** and click **Install** (`+` button).
 9. If you installed classic **Turbofy**, run **`/turbofy-setup`** once (see [Fewer permission prompts](#fewer-permission-prompts-claude) below). **Turbofy HTTP** does not need this.
 
@@ -54,7 +54,7 @@ That's it — from now on you can just use it.
 2. Open the **Plugins** panel.
 3. Next to the search input, click **Built by OpenAI**.
 4. Click **Add more** — this opens the **Add marketplace** dialog.
-5. Paste `https://github.com/graphapi-io/turbofy-ai-plugin` as the source.
+5. Paste `https://github.com/turbofy-ai/turbofy-ai-plugin` as the source.
 6. Click **Save**.
 7. Click **Built by OpenAI** next to the plugin search input again.
 8. Select **Turbofy** and/or **Turbofy HTTP**.
@@ -67,7 +67,7 @@ That's it — from now on you can just use it.
 
 1. Open Cursor and switch to the **Agent window** mode.
 2. Go to **Settings** → **Plugins**.
-3. Paste `https://github.com/graphapi-io/turbofy-ai-plugin` into the **Search or Paste Link** input.
+3. Paste `https://github.com/turbofy-ai/turbofy-ai-plugin` into the **Search or Paste Link** input.
 4. Select **Turbofy** and/or **Turbofy HTTP** from the results to install.
 
 ### OpenCode
