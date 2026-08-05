@@ -20,11 +20,11 @@ There is no local app checkout. Edit React sources through MCP:
 
 | Tool | Purpose |
 |---|---|
-| `block_type_open` | Open a block type by `blockTypeId` into the user's build session; starts dependency install (async). Returns file paths. |
-| `block_type_fs_list` | List files (`block-types/…` or `ws-<workspaceId>/block-types/…`) |
+| `block_type_open` | Open a block type by `blockTypeId` into the user's build session; starts dependency install (async). Returns file paths and the block type's `appId`. |
+| `block_type_fs_list` | List files (`apps/<appId>/block-types/…` or `workspaces/<environment>/<workspaceId>/apps/<appId>/block-types/…`) |
 | `block_type_fs_read` | Read a file |
 | `block_type_fs_write` | Write full UTF-8 file content |
-| `block_type_check` | `tsc` + esbuild check (needs session deps ready) |
+| `block_type_check` | `tsc` + esbuild check (requires `appId`; needs session deps ready) |
 | `block_type_push` | Compile, upload source + artifact, update the `cmsbuildingblocktype` record. Requires `appId` + `blockTypeId`. Run `block_type_check` first. |
 
 All calls need `orgId` + `workspaceId`.
@@ -34,8 +34,8 @@ All calls need `orgId` + `workspaceId`.
 1. Ensure the block type exists on the app (via `app_get` / `app_push` — metadata, `localizations`, `defaultConfig`).
 2. Resolve `blockTypeId` (and `Name`) from `app_get`.
 3. `block_type_open` → wait until session `workspaceSetup.state` is `ready`.
-4. `block_type_fs_read` / `block_type_fs_write` under `block-types/<Name>/` (or the `ws-…` form returned by open).
-5. `block_type_check` → fix errors → `block_type_check` again.
+4. `block_type_fs_read` / `block_type_fs_write` under `apps/<appId>/block-types/<Name>/` (or the scoped `workspaces/…` form returned by open).
+5. `block_type_check` with `{ orgId, workspaceId, appId, blockTypeName }` → fix errors → `block_type_check` again.
 6. `block_type_push` with `{ orgId, workspaceId, appId, blockTypeId }`.
 7. Confirm with `app_get` (`sourceCodeUrl` / `compiledCodeUrl` updated).
 
@@ -51,11 +51,16 @@ All calls need `orgId` + `workspaceId`.
 ### Layout inside the session
 
 ```
-block-types/<Name>/
-  index.tsx          # required entry — named export BuildingBlock
-  helpers.ts         # optional siblings
-  …
+workspaces/<environment>/<workspaceId>/apps/<appId>/
+  package.json       # session-managed scaffold
+  tsconfig.json
+  block-types/<Name>/
+    index.tsx        # required entry — named export BuildingBlock
+    helpers.ts       # optional siblings
+    …
 ```
+
+The session mirrors the stdio MCP's `~/.turbofy` tree, one app tree per app.
 
 - One folder per block type. Sibling imports only; **no imports of other block types**.
 - Allowed: `.ts`, `.tsx`, `.js`, `.jsx`, `.css`, `.json`.
