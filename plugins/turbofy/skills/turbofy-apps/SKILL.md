@@ -117,7 +117,7 @@ Key fields:
 | -------------------------------- | ----------------------- | ----------------------------------------------------------------------------------- |
 | `{lang}_blocktype_{blockTypeId}` | `en_blocktype_2vaEf74y` | Block type copies — written by `Turbofy_app_push` from `record.ts` `localizations`. |
 | `{lang}_block_{blockId}`         | `en_block_ghi789`       | Per-instance block overrides.                                                       |
-| `{lang}_page_{pageId}`           | `en_page_def456`        | Page-level localized content.                                                       |
+| `{lang}_page_{pageId}`           | `en_page_def456`        | Page copies / SEO meta — written by `Turbofy_app_push` from the page's `localizations`. |
 
 Note: `appId` is not included in the pattern since localizations already belong to an app via the `appId` field.
 
@@ -200,6 +200,7 @@ The recommended way to modify an existing app's schema, pages, block types, bloc
    - `app.ts` — schema re-export + page definitions + blocks (DSL); imports block types from `./block-types/index.js`
    - `app.base.json` / `schema.base.json` — serialized baseline used by push for diffing; do not edit by hand
    - `package.json` + `tsconfig.json` — scaffolded Node/TypeScript config so the directory is self-contained
+   - `docs/*.md` — persistent app documents (project context), synced with the workspace
    - `block-types/index.ts` — barrel re-exporting every block type variable
    - `block-types/{Name}/record.ts` — one **record** per block type (the `appBuilder.blockType({...})` call)
    - `block-types/{Name}/index.tsx` (+ siblings) — optional runtime React code for the block type, pulled from the `.source.zip` archive when present
@@ -224,6 +225,9 @@ After `Turbofy_app_pull` or `Turbofy_app_init`, files live under `~/.turbofy/wor
   schema.base.json          # serialized baseline schema declaration (do not edit)
   package.json              # scaffolded so the directory is self-contained
   tsconfig.json
+  docs/                     # persistent app documents (Markdown), synced by pull/push
+    README.md
+    decisions/auth.md
   block-types/
     index.ts                # barrel: re-exports every block type variable
     Navigation/
@@ -242,6 +246,15 @@ After `Turbofy_app_pull` or `Turbofy_app_init`, files live under `~/.turbofy/wor
 ```
 
 `<environment>` is the active MCP environment (`alpha` or `prod`) — the `turbofy` MCP uses `prod`, `turbofy-alpha` uses `alpha`. `<workspaceId>` and `<appId>` are the IDs reported by `Turbofy_list_workspaces` and `Turbofy_app_pull` / `Turbofy_app_init`.
+
+### App documents (`docs/*.md`)
+
+Every app can carry persistent Markdown documents — durable project context (architecture decisions, integration notes, content guidelines) that survives across sessions and is shared with the hosted MCP's `app_document_*` tools. Read them after every pull; keep them updated as the project evolves.
+
+- `Turbofy_app_pull` writes them to `docs/<path>.md` inside the app directory.
+- `Turbofy_app_push` syncs the local `docs/` tree back: new files are created, changed files updated. `dryRun: true` reports the plan under `documents` (`create` / `update` / `delete` / `remoteOnly`).
+- Deletes are base-gated: a remote document is deleted only when it existed at your last pull and the file has since been removed locally. Documents added remotely after your last pull appear as `remoteOnly` — they are left untouched; re-pull to fetch them.
+- Constraints: paths are relative POSIX paths ending in `.md` (max 256 UTF-8 bytes); content is UTF-8 Markdown, max 64 KiB per document.
 
 `record.ts` is a per-block-type manifest that maps 1:1 to a row in the `BuildingBlockType` table. It imports `appBuilder` and exports a single `const`:
 
@@ -511,11 +524,29 @@ Push materializes each non-empty dictionary into a `${lang}_block_${blockId}` Lo
 
 To remove an override, delete the `localizations` field (or the specific locale entry) and run `Turbofy_app_push`. The reconciler does not delete dropped Localization rows automatically — use `Turbofy_data_delete` on the Localization row (`ofType: "cmslocalization"`) if you need the CMS row gone, otherwise the empty/stale row is harmless.
 
+#### Page-level copies (`localizations` on `page(...)`)
+
+Pages carry their own per-locale dictionaries — SEO meta and page-scoped strings consumed by `pageLocalizedConfigCode()`:
+
+```ts
+const home = appBuilder.page({
+  name: "Home",
+  localizations: {
+    en: { heading: "Welcome", meta: { title: "Home" } },
+    de: { heading: "Willkommen", meta: { title: "Startseite" } },
+  },
+});
+```
+
+- Push writes one `${lang}_page_${pageId}` Localization row per non-empty locale dictionary; pull surfaces them back into the page definition.
+- `localizations` takes precedence over the older single-locale shorthand (`defaultLocalization` + `meta`). The shorthand still works and maps to the app's **default locale** on push; pull keeps emitting the shorthand for pages where only the default locale has content.
+- Same locale subset rule as blocks: every key under `localizations` must be in `i18n.locales`.
+
 #### When to use which localization mechanism
 
 - **Block type copies** — strings owned by a block type's React component (button labels, headings, error messages). Live in `record.ts` `localizations`. The builder auto-injects them into `config.copies` at runtime regardless of what you put in `defaultConfig`. **This is where almost all UI strings belong.**
 - **Per-block instance overrides** — when one specific block instance on one specific page needs different copies than the block type default. Set `localizations` on the corresponding `appBuilder.block(...)` call in `app.ts` (writes `${lang}_block_${blockId}` rows on push). Or, for ad-hoc one-off edits, use `Turbofy_data_create` / `Turbofy_data_update` with `ofType: "cmslocalization"`.
-- **Page-level localized content** (`{lang}_page_{pageId}`) — page metadata (title, description) consumed by `pageLocalizedConfigCode()`. Manage via `Turbofy_data_*` with `ofType: "cmslocalization"`.
+- **Page-level localized content** (`{lang}_page_{pageId}`) — page metadata (title, description) and page-scoped strings consumed by `pageLocalizedConfigCode()`. Manage via `localizations` on the `appBuilder.page(...)` call in `app.ts` (round-trips through pull/push).
 - **Schema/data localizations** (e.g. translated entity descriptions) — store on the entity itself (the original "manufacturer description in `de`" use case). Use ad-hoc dictionaries the entity's dynamic fields can read via `$$std.translate(...)`.
 
 ### Schema changes inside an app
@@ -577,6 +608,7 @@ Most localization edits happen in the workspace, not via MCP data tools:
 
 - **Block type copies** — edit `block-types/{Name}/record.ts` `localizations`, then `Turbofy_app_push`. See "Localization workflow" above.
 - **Per-block instance overrides** — edit `localizations` on the relevant `appBuilder.block(...)` call in `app.ts`, then `Turbofy_app_push`. See "Per-block instance overrides" above.
+- **Page copies** — edit `localizations` on the relevant `appBuilder.page(...)` call in `app.ts`, then `Turbofy_app_push`.
 - **App-level supported locales** — edit `i18n.locales` in `buildApp`, then `Turbofy_app_push`.
 
 Use the generic data tools below for ad-hoc edits or things the workspace doesn't own:
@@ -585,7 +617,7 @@ Use the generic data tools below for ad-hoc edits or things the workspace doesn'
 - `Turbofy_data_get` with `ofType: "cmslocalization"` — fetch a localization record
 - `Turbofy_data_create` / `Turbofy_data_update` — create or update a localization record
 
-These are the right tools for **page-level content** (`{lang}_page_{pageId}`) and one-off per-block instance edits when you don't want to round-trip through the workspace. Avoid using them to write `{lang}_blocktype_{blockTypeId}` rows directly — those are owned by the workspace and the next `Turbofy_app_pull` will reflect whatever is in `record.ts`. The same applies to `{lang}_block_{blockId}` rows when the block has `localizations` declared on the `block(...)` call in `app.ts`: pull will surface them and push will overwrite anything you wrote outside the workspace.
+These are the right tools for one-off ad-hoc edits when you don't want to round-trip through the workspace. Avoid using them to write `{lang}_blocktype_{blockTypeId}` rows directly — those are owned by the workspace and the next `Turbofy_app_pull` will reflect whatever is in `record.ts`. The same applies to `{lang}_block_{blockId}` rows when the block has `localizations` declared on the `block(...)` call, and to `{lang}_page_{pageId}` rows: pull surfaces them into the page's `localizations` and push overwrites anything written outside the workspace.
 
 When a block is created via `Turbofy_app_push`, an empty `en_block_<blockId>` Localization row is created as a side-effect (so the editor UI has something to write to). It is harmless — pull skips empty dictionaries and the workspace remains the source of truth.
 
