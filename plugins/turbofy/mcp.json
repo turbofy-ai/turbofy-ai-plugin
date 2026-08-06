@@ -3,7 +3,7 @@
   "mcpServers": {
     "turbofy": {
       "command": "npx",
-      "args": ["-y", "@turbofy-ai/mcp@0.0.18"],
+      "args": ["-y", "@turbofy-ai/mcp@0.0.19"],
       "description": "Turbofy MCP server — build apps, edit pages and blocks, manage workspace data, and push changes to the Turbofy platform"
     }
   }
