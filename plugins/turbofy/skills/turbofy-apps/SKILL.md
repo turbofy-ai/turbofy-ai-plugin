@@ -196,18 +196,24 @@ Apps, pages, block types, and block instances are normally managed via the works
 The recommended way to modify an existing app's schema, pages, block types, block instances, **and block type source code** is the unified workspace:
 
 1. **Pull** — `Turbofy_app_pull` writes everything to `~/.turbofy/workspaces/<environment>/<workspaceId>/apps/<appId>/`:
+   - `pages/<pageId>.ts` — one module per page (`export const <var> = appBuilder.page({...})`), importing its parent page, schema tables, and block types. The pull result's `files.pageFiles` maps `{path, id, name, slug}` — use it to open the right module directly.
+   - `app.ts` — barrel: schema re-export + page imports + `buildApp`
    - `schema.ts` — GraphQL data schema (DSL)
-   - `app.ts` — schema re-export + page definitions + blocks (DSL); imports block types from `./block-types/index.js`
-   - `app.base.json` / `schema.base.json` — serialized baseline used by push for diffing; do not edit by hand
-   - `package.json` + `tsconfig.json` — scaffolded Node/TypeScript config so the directory is self-contained
+   - `app.base.json` / `schema.base.json` — serialized baseline used by push for the three-way merge; do not edit by hand
+   - `package.json` — **user-owned**: scaffolded only when absent, never overwritten. Add custom block dependencies here and run `npm install`; pulls preserve it and `node_modules`.
+   - `tsconfig.json` — server-owned, regenerated on pull
    - `docs/*.md` — persistent app documents (project context), synced with the workspace
    - `block-types/index.ts` — barrel re-exporting every block type variable
    - `block-types/{Name}/record.ts` — one **record** per block type (the `appBuilder.blockType({...})` call)
    - `block-types/{Name}/index.tsx` (+ siblings) — optional runtime React code for the block type, pulled from the `.source.zip` archive when present
 2. **Edit** — modify files directly (add/remove/update pages, block types, blocks, schema, block source code).
-3. **Push** — `Turbofy_app_push` compiles schema, compiles+uploads each block type that has source code on disk, and reconciles the app state.
+3. **Push** — `Turbofy_app_push` compiles schema, compiles+uploads each block type that has source code on disk, three-way merges against the pull baseline and the live remote, and reconciles the app state.
 
 Call `Turbofy_app_push` with `dryRun: true` to preview changes before applying them.
+
+**Pull refuses to overwrite local edits.** Every pulled file is hash-tracked; if any generated file was modified or deleted since the last pull, `Turbofy_app_pull` errors and lists the files. Either push your edits first, revert the files, or re-run with `force: true` to discard them. Pulls regenerate in place — untracked files you created are never touched.
+
+**Push merges instead of overwriting.** Changes made remotely since your pull (webapp edits, another agent) are preserved as long as they touch different entities than your local edits. When both sides changed the same page/block/block type, push aborts with a `conflicts` list and applies nothing — re-pull with `force: true` to reset to remote (losing local edits on those entities), or align your files with the remote change and push again. New pages you author locally are re-homed to `pages/<serverId>.ts` by the post-push refresh.
 
 Block source location is **convention-based**: push looks for `block-types/{Name}/index.{tsx,ts}`. If absent, the block type is treated as sourceless (valid — useful for content-only blocks where the runtime is provided elsewhere). When present, push compiles + uploads it and writes the resulting URLs back to the CMS automatically.
 
@@ -219,12 +225,14 @@ After `Turbofy_app_pull` or `Turbofy_app_init`, files live under `~/.turbofy/wor
 
 ```
 ~/.turbofy/workspaces/<environment>/<workspaceId>/apps/<appId>/
+  app.ts                    # barrel: schema re-export + page imports + buildApp
+  pages/
+    <pageId>.ts             # one page module each; imports parent page, tables, block types
   schema.ts                 # GraphQL data schema (DSL)
-  app.ts                    # schema re-export + pages + blocks (DSL); imports from ./block-types
-  app.base.json             # serialized baseline app state (do not edit)
+  app.base.json             # pull baseline + generated-file hashes (do not edit)
   schema.base.json          # serialized baseline schema declaration (do not edit)
-  package.json              # scaffolded so the directory is self-contained
-  tsconfig.json
+  package.json              # user-owned: custom deps live here; scaffolded only when absent
+  tsconfig.json             # server-owned, regenerated on pull
   docs/                     # persistent app documents (Markdown), synced by pull/push
     README.md
     decisions/auth.md
@@ -545,8 +553,8 @@ const home = appBuilder.page({
 #### When to use which localization mechanism
 
 - **Block type copies** — strings owned by a block type's React component (button labels, headings, error messages). Live in `record.ts` `localizations`. The builder auto-injects them into `config.copies` at runtime regardless of what you put in `defaultConfig`. **This is where almost all UI strings belong.**
-- **Per-block instance overrides** — when one specific block instance on one specific page needs different copies than the block type default. Set `localizations` on the corresponding `appBuilder.block(...)` call in `app.ts` (writes `${lang}_block_${blockId}` rows on push). Or, for ad-hoc one-off edits, use `Turbofy_data_create` / `Turbofy_data_update` with `ofType: "cmslocalization"`.
-- **Page-level localized content** (`{lang}_page_{pageId}`) — page metadata (title, description) and page-scoped strings consumed by `pageLocalizedConfigCode()`. Manage via `localizations` on the `appBuilder.page(...)` call in `app.ts` (round-trips through pull/push).
+- **Per-block instance overrides** — when one specific block instance on one specific page needs different copies than the block type default. Set `localizations` on the corresponding `appBuilder.block(...)` call in the page's `pages/<pageId>.ts` module (writes `${lang}_block_${blockId}` rows on push). Or, for ad-hoc one-off edits, use `Turbofy_data_create` / `Turbofy_data_update` with `ofType: "cmslocalization"`.
+- **Page-level localized content** (`{lang}_page_{pageId}`) — page metadata (title, description) and page-scoped strings consumed by `pageLocalizedConfigCode()`. Manage via `localizations` on the `appBuilder.page(...)` call in `pages/<pageId>.ts` (round-trips through pull/push).
 - **Schema/data localizations** (e.g. translated entity descriptions) — store on the entity itself (the original "manufacturer description in `de`" use case). Use ad-hoc dictionaries the entity's dynamic fields can read via `$$std.translate(...)`.
 
 ### Schema changes inside an app
@@ -555,7 +563,7 @@ When app work requires schema changes (new tables, fields, enums), edit `schema.
 
 ### Macros
 
-The `app.ts` file imports macros from `@graphapi-io/declarations`:
+Page modules (and `app.ts`) import macros from `@graphapi-io/declarations`:
 
 ```ts
 import { macros } from "@graphapi-io/declarations";
@@ -607,8 +615,8 @@ Blocks without an `id` in the DSL file are treated as new (create). Blocks with 
 Most localization edits happen in the workspace, not via MCP data tools:
 
 - **Block type copies** — edit `block-types/{Name}/record.ts` `localizations`, then `Turbofy_app_push`. See "Localization workflow" above.
-- **Per-block instance overrides** — edit `localizations` on the relevant `appBuilder.block(...)` call in `app.ts`, then `Turbofy_app_push`. See "Per-block instance overrides" above.
-- **Page copies** — edit `localizations` on the relevant `appBuilder.page(...)` call in `app.ts`, then `Turbofy_app_push`.
+- **Per-block instance overrides** — edit `localizations` on the relevant `appBuilder.block(...)` call in the page's `pages/<pageId>.ts` module, then `Turbofy_app_push`. See "Per-block instance overrides" above.
+- **Page copies** — edit `localizations` on the relevant `appBuilder.page(...)` call in `pages/<pageId>.ts`, then `Turbofy_app_push`.
 - **App-level supported locales** — edit `i18n.locales` in `buildApp`, then `Turbofy_app_push`.
 
 Use the generic data tools below for ad-hoc edits or things the workspace doesn't own:

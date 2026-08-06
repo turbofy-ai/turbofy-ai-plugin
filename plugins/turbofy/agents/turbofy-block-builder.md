@@ -38,7 +38,7 @@ state the assumption you're making and proceed — do not block:
 
 ## Never touch these (the orchestrator owns them)
 
-- `app.ts` (pages, block-instance placement, `i18n`, `buildApp`)
+- `app.ts` and `pages/<pageId>.ts` (pages, block-instance placement, `i18n`, `buildApp`)
 - `block-types/index.ts` (the barrel)
 - `schema.ts`
 - any other `block-types/<OtherName>/` directory

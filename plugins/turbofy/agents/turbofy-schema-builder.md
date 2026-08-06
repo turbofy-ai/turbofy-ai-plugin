@@ -52,5 +52,5 @@ Report the **data contract** the orchestrator needs to spec block builders:
 - Enums added/changed.
 - Whether you pushed or deferred, and any validation errors still outstanding.
 
-Stay out of `app.ts`, `block-types/`, and block placement — those belong to the
+Stay out of `app.ts`, `pages/`, `block-types/`, and block placement — those belong to the
 orchestrator and the block builders.
