@@ -17,6 +17,7 @@ Load when the user asks about **workspaces, databases, tables, records, or getti
 | Pages, layout, homepage, translate the site | `turbofy-apps` |
 | Build/style a section (navbar, hero, grid) | `turbofy-blocks` |
 | Server data blank, fetch records, URL-based titles | `turbofy-dynamic-fields` |
+| Chatbot, AI assistant, conversational feature | `turbofy-chatbot` |
 | Tables, schema, records, workspaces | stay here |
 
 ---
@@ -52,6 +53,7 @@ Organization
 | Writing a block type's runtime React component (`block-types/<Name>/index.tsx`)             | `turbofy-blocks`          |
 | Writing server-side `@dynamic_field` JS (`defaultConfig`, `defaultDynamicData`, etc.)       | `turbofy-dynamic-fields`  |
 | Flows (workspace automations): `Turbofy_flow_*` workflow, flowBuilder DSL, triggers/steps    | `turbofy-flows`           |
+| Chatbot / AI assistant (Thread + Message tables, reply flow, chat block — there is no chatbot API) | `turbofy-chatbot`   |
 
 Multiple skills can be active at once — pull in whichever match the work in flight.
 
@@ -279,3 +281,4 @@ For app entities that are owned by the workspace files (pages, block types, bloc
 - **`turbofy-apps`** — Apps CMS data model (App, Page, BuildingBlockType, BuildingBlock, Localization, Image, SlugMapping), the `Turbofy_app_*` workflow, `apps/<appId>/` file layout, localization workflow, block instance editing, macros.
 - **`turbofy-blocks`** — writing block-type runtime React components (`block-types/<Name>/index.tsx`): props, `config.copies`, client-side `@/api` hooks, `@/navigation`, UI/UX/accessibility rules.
 - **`turbofy-dynamic-fields`** — server-side `@dynamic_field` JavaScript: `$$self`, `$$args`, the `$$std` API, reserved `dynamicArgs` keys, debugging.
+- **`turbofy-chatbot`** — the chatbot recipe: Thread/Message tables + reply flow + chat block. Turbofy has **no chatbot API**; `product_chatbot` is a legacy flag.

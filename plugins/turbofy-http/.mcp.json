@@ -1,6 +1,6 @@
 {
   "mcpServers": {
-    "turbofy-http": {
+    "Turbofy": {
       "url": "https://mcp.turbofy.com/mcp",
       "description": "Turbofy HTTP MCP — discover workspaces, edit schema/apps/flows as JSON, edit block sources in a remote build session"
     }

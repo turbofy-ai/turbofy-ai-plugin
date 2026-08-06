@@ -7,7 +7,7 @@ This repository is a **plugin marketplace** for AI coding assistants — **Claud
 | **Turbofy** (`turbofy`) | Classic local MCP (`npx @turbofy-ai/mcp`) — pull/push apps and schema to `~/.turbofy`, TypeScript DSL workflows. |
 | **Turbofy HTTP** (`turbofy-http`) | New HTTP MCP — schema/apps/flows as JSON, remote `block_type_*` sessions. No local `~/.turbofy` checkout. |
 
-Install one or both. Their MCP server keys differ (`turbofy` vs `turbofy-http`), so they can run in parallel without clobbering each other.
+Install one or both. Their MCP server keys differ (`turbofy` vs `Turbofy`), so they can run in parallel without clobbering each other.
 
 ---
 
@@ -97,7 +97,7 @@ Copy [`plugins/turbofy/skills/`](plugins/turbofy/skills/) into `.opencode/skills
 {
   "$schema": "https://opencode.ai/config.json",
   "mcp": {
-    "turbofy-http": {
+    "Turbofy": {
       "type": "remote",
       "url": "https://mcp.turbofy.com/mcp",
       "enabled": true
@@ -155,7 +155,7 @@ need to do that each session, whereas `/turbofy-setup` is permanent.
 ## Troubleshooting
 
 - **No custom icon in Claude Code.** Claude's plugin marketplace does not yet render custom plugin icons — all plugins show the same default placeholder ([anthropics/claude-code#28187](https://github.com/anthropics/claude-code/issues/28187)). The `icon` field is set in `.claude-plugin/` for when support lands.
-- **Tool names.** Classic tools look like `mcp__turbofy__<tool>`; HTTP tools look like `mcp__turbofy-http__<tool>`. Skills are namespaced per plugin. In Codex address them as `@turbofy` / `@turbofy-http` (plugin `name` must match the directory under `plugins/`).
+- **Tool names.** Classic tools look like `mcp__turbofy__<tool>`; HTTP tools look like `mcp__Turbofy__<tool>` (the HTTP plugin's MCP server key is `Turbofy`). Skills are namespaced per plugin. In Codex address them as `@turbofy` / `@turbofy-http` (plugin `name` must match the directory under `plugins/`).
 - **Nothing happened after install.** Restart the app or reload plugins. In Claude Code you can also run `/reload-plugins`.
 - **The assistant doesn't seem to see Turbofy.** Make sure you're signed in, and that the expected MCP appears as connected (in Claude Code, run `/mcp`).
 - **Claude keeps asking permission to touch `~/.turbofy`.** Run `/turbofy-setup` once (classic plugin only).

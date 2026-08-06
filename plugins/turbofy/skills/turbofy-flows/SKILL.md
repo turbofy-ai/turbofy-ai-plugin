@@ -201,11 +201,13 @@ Every factory has the signature `flowBuilder.step.<type>(name, { description?, p
 
 | Step | Params | Result |
 |---|---|---|
-| `genericAI` | discriminated by `operation`: `"generateObject"` `{ apiKey, model: { provider: "openai"\|"anthropic"\|"mistral"\|"cohere"\|"google", model }, prompt, schema, temperature?, providerOptions? }` · `"generateText"`/`"streamText"` `{ apiKey, model, prompt? or messages?, system?, tools, toolChoice?, temperature? }` · `"embed"` `{ apiKey, model, value }` | `{ type: "textResult"\|"objectResult"\|"streamResult"\|"embeddingResult", value }` \| `{ type: "error", error }` |
+| `genericAI` | discriminated by `operation`: `"generateObject"` `{ apiKey, model: { provider: "openai"\|"anthropic"\|"mistral"\|"cohere"\|"google", model }, prompt, schema, temperature?, providerOptions? }` · `"generateText"`/`"streamText"` `{ apiKey, model, prompt? or messages?, system?, tools, toolChoice?, temperature? }` · `"embed"` `{ apiKey, model, value }` | `generateText` → `{ type: "result", value: { text, toolCalls } }` · `generateObject` → `{ type: "objectResult", value }` · `streamText` → repeated `{ type: "streamChunk", value: "<accumulated text>" }` then `{ type: "streamResult", value: { text, toolCalls } }` · `embed` → `{ type: "embeddingResult", value }` · errors → `{ type: "error", error }` |
 | `openAIImageGeneration` | `{ model: "dall-e-3"\|"dall-e-2", prompt, size?, quality?, style?, n?, outputFilename?, apiKey? }` | `{ type: "result", url, key, mimeType }` \| `{ type: "error", value }` |
 | `elevenLabsTTS` | `{ text, model?, voiceId?, stream?, outputFormat?, apiKey?, stability?, similarityBoost?, style? }` | `{ type: "success", url, key, mimeType, durationSeconds, characterStartTimes }` \| `{ type: "stream", ... }` \| `{ type: "error", value? }` |
 
 `apiKey` params (`genericAI`, `openAIImageGeneration`, `elevenLabsTTS`, `googleSearch`) are credentials: they **must** be `flowBuilder.secret(...)` (or `js()`), never a plain string — the build fails otherwise.
+
+For `streamText`, every step **after** the AI step runs once per published `streamChunk` (throttled; `value` is the accumulated text so far) and once more for the final `streamResult` — use this to stream into a record via `updateType`. The canonical chatbot pattern (create draft message → `streamText` → `updateType` per chunk) is in `turbofy-chatbot`.
 
 ## 6) Secrets
 
@@ -236,3 +238,4 @@ Warnings:
 
 - `turbofy-platform` — org/workspace discovery, environments, core MCP rules, schema workflow.
 - `turbofy-dynamic-fields` — the other server-side JS surface ($$std API for dynamic fields); note flows use `state` (output map), not `$$std`.
+- `turbofy-chatbot` — the chatbot recipe built on flows (Message INSERT trigger → `genericAI` → assistant Message write). Turbofy has **no chatbot API**.

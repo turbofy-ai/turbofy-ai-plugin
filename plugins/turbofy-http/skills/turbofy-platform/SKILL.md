@@ -16,6 +16,7 @@ Orientation skill for the Turbofy platform. Load it first in a fresh session, fo
 | Build/style a section (navbar, hero, grid) | `turbofy-blocks` |
 | Server data blank, fetch records, URL-based titles | `turbofy-dynamic-fields` |
 | Automations / flows | `turbofy-flows` |
+| Chatbot, AI assistant, conversational feature | `turbofy-chatbot` |
 | Tables, schema, records, workspaces | stay here |
 
 ---
@@ -50,6 +51,7 @@ Organization
 | Block React sources via `block_type_*` | `turbofy-blocks` |
 | Server-side `@dynamic_field` JS (`defaultConfig`, `defaultDynamicData`, etc.) | `turbofy-dynamic-fields` |
 | Flows (`flow_*` JSON declarations) | `turbofy-flows` |
+| Chatbot / AI assistant (Thread + Message tables, reply flow, chat block — there is no chatbot API) | `turbofy-chatbot` |
 
 ---
 
@@ -67,7 +69,7 @@ There is **no local file root**. Do not create or edit files under `~/.turbofy`.
 
 ## 3) MCP tools at a glance
 
-Tool names are unprefixed (`list_workspaces`, `workspace_get`, …). Hosts may show them as `mcp__turbofy-http__<tool>` (from this plugin's MCP server key).
+Tool names are unprefixed (`list_workspaces`, `workspace_get`, …). Hosts may show them as `mcp__Turbofy__<tool>` (from this plugin's MCP server key).
 
 **Discovery:**
 
@@ -208,3 +210,4 @@ For **app structure** (pages, block instances, block-type metadata/copies/`defau
 - **`turbofy-blocks`** — remote `block_type_*` build session + React component rules.
 - **`turbofy-dynamic-fields`** — `$$self` / `$$args` / `$$std`.
 - **`turbofy-flows`** — flow JSON declarations via `flow_upsert`.
+- **`turbofy-chatbot`** — the chatbot recipe: Thread/Message tables + reply flow + chat block. Turbofy has **no chatbot API**; `product_chatbot` is a legacy flag.
