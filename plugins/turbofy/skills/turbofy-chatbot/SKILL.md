@@ -79,7 +79,13 @@ Notes:
 
 ## 4) Flow — the bot's brain
 
-Workflow: `Turbofy_flow_init` → edit `flow.ts` → `Turbofy_flow_push` (see `turbofy-flows` for the full DSL). Simple, non-streaming version:
+Workflow: `Turbofy_flow_init` → edit `flow.ts` → `Turbofy_flow_push` (see `turbofy-flows` for the full DSL).
+
+**Chatbots must use `operation: "streamText"`** — not `generateText`. Waiting for a full reply and then dumping it feels broken; streaming updates the assistant message as tokens arrive.
+
+`streamText` publishes `{ type: "streamChunk", value: "<accumulated text so far>" }` repeatedly (throttled) and finally `{ type: "streamResult", value: { text, toolCalls } }` (or `{ type: "error", error }`). **Every step after the AI step runs once per publish** — that is how streaming reaches the client: create an empty assistant draft *before* the AI step, then `updateType` it after; each update is a record MODIFY that the WebSocket pushes to the block.
+
+Step chain: `getHistory` → `createDraft` → `generateReply` (`streamText`) → `updateDraft`:
 
 ```ts
 import { flowBuilder } from "@turbofy-ai/app-runtime/dsl";
@@ -105,9 +111,17 @@ export const flow = flowBuilder.buildFlow({
         parentId: flowBuilder.js("state.onUserMessage.threadId"),
       },
     }),
+    flowBuilder.step.createType("createDraft", {
+      params: {
+        ofType: "<messageTableId>",
+        fields: flowBuilder.js(
+          "({ threadId: state.onUserMessage.threadId, role: 'assistant', content: '', isComplete: false })",
+        ),
+      },
+    }),
     flowBuilder.step.genericAI("generateReply", {
       params: {
-        operation: "generateText",
+        operation: "streamText", // REQUIRED for chatbots — do not use generateText
         apiKey: flowBuilder.secret("<secret record id>"), // never a plain string
         model: { provider: "openai", model: "gpt-4o" },
         system: "You are a helpful assistant.",
@@ -118,11 +132,12 @@ export const flow = flowBuilder.buildFlow({
         ),
       },
     }),
-    flowBuilder.step.createType("saveReply", {
+    flowBuilder.step.updateType("updateDraft", {
       params: {
+        id: flowBuilder.js("state.createDraft.id"),
         ofType: "<messageTableId>",
         fields: flowBuilder.js(
-          "({ threadId: state.onUserMessage.threadId, role: 'assistant', isComplete: true, content: state.generateReply.type === 'result' ? state.generateReply.value.text : 'Sorry — something went wrong.' })",
+          "({ content: state.generateReply.type === 'streamChunk' ? state.generateReply.value : (state.generateReply.type === 'streamResult' ? state.generateReply.value.text : 'Sorry — something went wrong.'), isComplete: state.generateReply.type === 'streamResult' || state.generateReply.type === 'error' })",
         ),
       },
     }),
@@ -130,7 +145,7 @@ export const flow = flowBuilder.buildFlow({
 });
 ```
 
-`generateText` results are `{ type: "result", value: { text, toolCalls } }` or `{ type: "error", error }` — always handle the error branch so the user isn't left staring at silence.
+Chunk values are the **accumulated full text**, not deltas — each update simply overwrites `content`. `isComplete` flips to `true` on the final `streamResult` (or `error`); the block uses it to stop its streaming cursor.
 
 ### Why the trigger condition is mandatory
 
@@ -138,47 +153,19 @@ The flow **writes to the same Message table that triggers it** — an infinite l
 
 ### Provider toggle (multiple models)
 
-`apiKey` must be a static `flowBuilder.secret(...)` marker, so a single step cannot pick a secret at runtime. To let users switch providers (e.g. OpenAI ↔ Anthropic), add a `provider` enum field to Message (set by the UI), then declare **one `genericAI` step per provider with mutually exclusive `skipIf` conditions**:
+`apiKey` must be a static `flowBuilder.secret(...)` marker, so a single step cannot pick a secret at runtime. To let users switch providers (e.g. OpenAI ↔ Anthropic), add a `provider` enum field to Message (set by the UI), then declare **one `genericAI` `streamText` step per provider with mutually exclusive `skipIf` conditions**:
 
 ```ts
 flowBuilder.step.genericAI("generateOpenAI", {
   skipIf: "state.onUserMessage.provider === 'anthropic'",
-  params: { /* openai model + openai secret */ },
+  params: { operation: "streamText", /* openai model + openai secret */ },
 }),
 flowBuilder.step.genericAI("generateAnthropic", {
   skipIf: "state.onUserMessage.provider !== 'anthropic'",
-  params: { /* anthropic model + anthropic secret */ },
+  params: { operation: "streamText", /* anthropic model + anthropic secret */ },
 }),
-// saveReply then reads whichever step ran (the skipped one is undefined in state)
+// updateDraft then reads whichever step ran (the skipped one is undefined in state)
 ```
-
-### Streaming variant
-
-`operation: "streamText"` publishes `{ type: "streamChunk", value: "<accumulated text so far>" }` repeatedly (throttled) and finally `{ type: "streamResult", value: { text, toolCalls } }`. **Every step after the AI step runs once per publish** — this is how streaming reaches the client: create an empty assistant message *before* the AI step, then update it after; each update is a record MODIFY that the WebSocket pushes to the block.
-
-```ts
-// steps: [getHistory, createDraft, generateReply(streamText), updateDraft]
-flowBuilder.step.createType("createDraft", {
-  params: {
-    ofType: "<messageTableId>",
-    fields: flowBuilder.js(
-      "({ threadId: state.onUserMessage.threadId, role: 'assistant', content: '', isComplete: false })",
-    ),
-  },
-}),
-// ... generateReply with operation: "streamText" ...
-flowBuilder.step.updateType("updateDraft", {
-  params: {
-    id: flowBuilder.js("state.createDraft.id"),
-    ofType: "<messageTableId>",
-    fields: flowBuilder.js(
-      "({ content: state.generateReply.type === 'streamChunk' ? state.generateReply.value : state.generateReply.value.text, isComplete: state.generateReply.type === 'streamResult' })",
-    ),
-  },
-}),
-```
-
-Chunk values are the **accumulated full text**, not deltas — each update simply overwrites `content`. `isComplete` flips to `true` on the final `streamResult`; the block uses it to stop its typing indicator.
 
 ## 5) Chat UI block
 
@@ -265,7 +252,9 @@ Key points:
 - **The client hooks are only reactive to client-side mutations.** The flow's writes happen server-side, so the block must pair `useListTypesByParent` with `useWsSubscription` + `refetch()`. For extra-smooth streaming you can read `event.record` directly instead of refetching.
 - **Chatbots only work on private pages right now.** The WebSocket connection requires a logged-in user with a valid token, so WS events are not delivered on public pages — the assistant reply won't appear until a reload. Place the chat block on an authenticated page (`visibility: "user"`, see `turbofy-apps` for auth settings); do not build a chatbot on a public page.
 - Lazily create the `Thread` on first send (as above). To persist conversations for logged-in users, parent the thread to the user (`useCurrentUser().user.sub` is the user record ID) and load the latest thread on mount instead.
-- Show a typing indicator while the last message is from the user or an assistant draft has `isComplete === false`.
+- Show a typing indicator while waiting for the assistant draft (`last message.role === "user"`). Once the draft exists, render its growing `content` as Markdown.
+- **Render assistant replies as Markdown** — LLMs return Markdown (`**bold**`, lists, code fences). Use `react-markdown` + `remark-gfm` (available via `@turbofy-ai/app-runtime`). Keep user messages as plain text.
+- **Client typewriter on top of `streamText`** — WS/`updateType` chunks arrive in bursts and feel clunky if rendered as-is. Keep a `visibleLength` that typewrites toward the latest `content` target (not a full replay of finished history — mount already-complete messages at full length). Keep a cursor while `isComplete === false` or while still catching up after the last chunk.
 - Table IDs, never table names — inject them via `defaultConfig` in `record.ts` (e.g. `({ messageTableId: "${MessageTable.id}", threadTableId: "${ThreadTable.id}" })`).
 
 ## 6) Gotchas
@@ -274,6 +263,7 @@ Key points:
 - **Trigger condition** — omitting `role === 'user'` (or writing assistant messages that still match it) creates an infinite flow loop. Validation warns, not blocks, when any condition exists.
 - **`apiKey` must be `flowBuilder.secret(...)`** — the LLM key lives in a workspace secret (dashboard → Workspace → Secrets), never in `flow.ts`.
 - **History ordering** — `listTypeByParent` with `sortOrder: "DESC"` + `limit` gives the most recent window; `.reverse()` it before handing to the LLM.
+- **Always use `streamText` for chatbots** — `generateText` waits for the full reply and feels broken in a chat UI.
 - **Stream chunks are accumulated text**, not deltas.
 - **WS events are access-controlled** — end users only receive events for records their read-access policy allows, so scope Message/Thread auth accordingly if threads must be private per user.
 - **Public pages don't receive WS events** — the WebSocket requires a valid end-user token, so chatbots currently only work on private (authenticated) pages. A chat block on a public page will store and answer messages, but the reply only shows up after a reload.
