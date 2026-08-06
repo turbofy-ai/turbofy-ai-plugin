@@ -37,7 +37,7 @@ useWsSubscription ◀── WS event ─── Message { role: "assistant" } ◀
 ```
 
 - **Sending a message = creating a record.** **Receiving a reply = the flow writing a record.**
-- Every record INSERT/MODIFY/REMOVE on a workspace table is **automatically pushed to subscribed WebSocket clients** (respecting the end-user read-access policy). The chat block just subscribes with `useWsSubscription` — no `notifyWebSocket` flow step is needed for this pattern.
+- Every record INSERT/MODIFY/REMOVE on a workspace table is **automatically pushed to subscribed WebSocket clients** (respecting the end-user read-access policy). The chat block subscribes with `useWsSubscription` — no `notifyWebSocket` flow step is needed for this pattern. The WebSocket requires a logged-in user with a valid token, so this only works on private (authenticated) pages — see the Gotchas.
 
 ## 3) Schema
 
@@ -111,6 +111,7 @@ export const flow = flowBuilder.buildFlow({
         apiKey: flowBuilder.secret("<secret record id>"), // never a plain string
         model: { provider: "openai", model: "gpt-4o" },
         system: "You are a helpful assistant.",
+        tools: {}, // required by the params schema even when unused
         // DESC + reverse() → chronological order for the LLM
         messages: flowBuilder.js(
           "state.getHistory.items.map((m) => ({ role: m.role, content: m.content })).reverse()",
@@ -134,6 +135,22 @@ export const flow = flowBuilder.buildFlow({
 ### Why the trigger condition is mandatory
 
 The flow **writes to the same Message table that triggers it** — an infinite loop waiting to happen. The `condition: "state.role === 'user'"` is what terminates the recursion: the flow's own writes set `role: 'assistant'`, which never matches. Push validation flags this pattern as a self-retrigger **error** without a condition and downgrades it to a **warning** with one — the validator only checks that a condition exists, so make sure yours actually excludes the flow's own writes.
+
+### Provider toggle (multiple models)
+
+`apiKey` must be a static `flowBuilder.secret(...)` marker, so a single step cannot pick a secret at runtime. To let users switch providers (e.g. OpenAI ↔ Anthropic), add a `provider` enum field to Message (set by the UI), then declare **one `genericAI` step per provider with mutually exclusive `skipIf` conditions**:
+
+```ts
+flowBuilder.step.genericAI("generateOpenAI", {
+  skipIf: "state.onUserMessage.provider === 'anthropic'",
+  params: { /* openai model + openai secret */ },
+}),
+flowBuilder.step.genericAI("generateAnthropic", {
+  skipIf: "state.onUserMessage.provider !== 'anthropic'",
+  params: { /* anthropic model + anthropic secret */ },
+}),
+// saveReply then reads whichever step ran (the skipped one is undefined in state)
+```
 
 ### Streaming variant
 
@@ -205,6 +222,7 @@ export const BuildingBlock = ({ config }: IBuildingBlockProps<IConfig>) => {
     threadId ?? "", // no thread yet → empty result
   );
 
+  // Fast path: WebSocket events for the flow's server-side writes.
   useWsSubscription(
     { ofType: config.messageTableId, operations: ["INSERT", "UPDATE"] },
     (event: IWsEvent) => {
@@ -245,6 +263,7 @@ export const BuildingBlock = ({ config }: IBuildingBlockProps<IConfig>) => {
 Key points:
 
 - **The client hooks are only reactive to client-side mutations.** The flow's writes happen server-side, so the block must pair `useListTypesByParent` with `useWsSubscription` + `refetch()`. For extra-smooth streaming you can read `event.record` directly instead of refetching.
+- **Chatbots only work on private pages right now.** The WebSocket connection requires a logged-in user with a valid token, so WS events are not delivered on public pages — the assistant reply won't appear until a reload. Place the chat block on an authenticated page (`visibility: "user"`, see `turbofy-apps` for auth settings); do not build a chatbot on a public page.
 - Lazily create the `Thread` on first send (as above). To persist conversations for logged-in users, parent the thread to the user (`useCurrentUser().user.sub` is the user record ID) and load the latest thread on mount instead.
 - Show a typing indicator while the last message is from the user or an assistant draft has `isComplete === false`.
 - Table IDs, never table names — inject them via `defaultConfig` in `record.ts` (e.g. `({ messageTableId: "${MessageTable.id}", threadTableId: "${ThreadTable.id}" })`).
@@ -257,6 +276,7 @@ Key points:
 - **History ordering** — `listTypeByParent` with `sortOrder: "DESC"` + `limit` gives the most recent window; `.reverse()` it before handing to the LLM.
 - **Stream chunks are accumulated text**, not deltas.
 - **WS events are access-controlled** — end users only receive events for records their read-access policy allows, so scope Message/Thread auth accordingly if threads must be private per user.
+- **Public pages don't receive WS events** — the WebSocket requires a valid end-user token, so chatbots currently only work on private (authenticated) pages. A chat block on a public page will store and answer messages, but the reply only shows up after a reload.
 
 ## See also
 
