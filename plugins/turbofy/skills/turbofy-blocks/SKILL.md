@@ -833,7 +833,7 @@ Note: `refetch()` and `fetchNextPage()` on these hooks are fire-and-forget (`() 
 
 #### Real-time WebSocket events (useWsSubscription)
 
-`useWsSubscription` subscribes to real-time INSERT/UPDATE/DELETE events for a given table. Use it for imperative side-effects (toasts, cursor tracking, custom animations) and for real-time data sync in scenarios like chat, live feeds, or collaborative UIs where new records should appear immediately.
+`useWsSubscription` subscribes to real-time INSERT/UPDATE/DELETE events for a given table. Use it for imperative side-effects (toasts, cursor tracking, custom animations) and for real-time data sync in scenarios like chat, live feeds, or collaborative UIs where new records should appear immediately. Server-side writes (e.g. from flows) reach the client **only** through this subscription — the query hooks above are reactive to client-side mutations only, so pair `useWsSubscription` with `refetch()` when records are written server-side (full chatbot pattern in `turbofy-chatbot`).
 
 ```tsx
 import { useWsSubscription } from "@/api";
@@ -1086,3 +1086,4 @@ See `turbofy-apps` § "Authentication settings" for full `auth` configuration an
 - **`turbofy-platform`** — platform orientation, workspaces & environments, MCP tool surface, core rules, schema workflow, data-builder DSL.
 - **`turbofy-apps`** — Apps CMS data model, `Turbofy_app_*` workflow, file layout, localization workflow, macros.
 - **`turbofy-dynamic-fields`** — full `$$std` API reference, runtime model, reserved `dynamicArgs` keys, debugging checklist for dynamic-field code.
+- **`turbofy-chatbot`** — the full chatbot recipe (Thread/Message tables + reply flow + chat block with `useWsSubscription`). Turbofy has **no chatbot API**.

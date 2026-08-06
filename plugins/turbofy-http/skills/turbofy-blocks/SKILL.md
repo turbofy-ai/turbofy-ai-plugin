@@ -212,3 +212,4 @@ When an app uses end-user auth (`app.settings.auth`), Login/Signup system blocks
 - **`turbofy-apps`** — manifest, `app_push`, localization, placement.
 - **`turbofy-dynamic-fields`** — `$$std` / reserved `dynamicArgs`.
 - **`turbofy-platform`** — `workspace_get` for table ids, CMS ofTypes.
+- **`turbofy-chatbot`** — the full chatbot recipe (Thread/Message tables + reply flow + chat block with `useWsSubscription`). Turbofy has **no chatbot API**.

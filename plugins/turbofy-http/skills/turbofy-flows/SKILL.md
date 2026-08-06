@@ -178,6 +178,8 @@ Logic & integration: `logic`, `httpRequest`, `cloudFunction`, `notifyWebSocket`,
 
 AI: `genericAI`, `openAIImageGeneration`, `elevenLabsTTS`.
 
+`genericAI` results: `generateText` → `{ type: "result", value: { text, toolCalls } }` · `generateObject` → `{ type: "objectResult", value }` · `streamText` → repeated `{ type: "streamChunk", value: "<accumulated text>" }` then `{ type: "streamResult", value: { text, toolCalls } }` · `embed` → `{ type: "embeddingResult", value }` · errors → `{ type: "error", error }`. For `streamText`, every step **after** the AI step runs once per published chunk and once more for the final `streamResult` — use this to stream into a record via `updateType` (canonical chatbot pattern in `turbofy-chatbot`).
+
 Credential params (`apiKey`, auth headers, etc.) should use **secret references**, never plaintext. The validator only enforces this for `apiKey` on `genericAI` / `googleSearch` / `openAIImageGeneration` / `elevenLabsTTS` — a plaintext auth header on `httpRequest` passes validation, so keep it secret-marked by convention. Prefer copying the secret marker shape from an existing `flow_get` in the workspace, or use the dry-run validator.
 
 ---
@@ -210,3 +212,4 @@ Always dry-run first.
 
 - `turbofy-platform` — discovery, `workspace_get`, `data_*`, schema.
 - `turbofy-dynamic-fields` — different server JS surface (`$$std`); flows use `state`, not `$$std`.
+- `turbofy-chatbot` — the chatbot recipe built on flows (Message INSERT trigger → `genericAI` → assistant Message write). Turbofy has **no chatbot API**.
