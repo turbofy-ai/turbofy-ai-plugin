@@ -25,7 +25,7 @@ Expect these; if missing, state assumptions and proceed:
    - `defaultConfig` / `defaultDynamicData` (unwrapped user JS)
    - `localizations` for every locale in the contract
 2. If a `blockTypeId` already exists (or after the orchestrator creates it via `app_push`):
-   - `block_type_open` → `block_type_fs_read` / `block_type_fs_write` under `block-types/<Name>/`
+   - `block_type_open` → `fs_read` / `fs_write` under `apps/<appId>/block-types/<Name>/`
    - Implement `index.tsx` (+ siblings) per `turbofy-blocks`
    - `block_type_check` → fix → `block_type_check`
    - `block_type_push` **only if the orchestrator asked you to publish**; otherwise stop after a clean check
@@ -40,7 +40,7 @@ New block types and page placement are owned by the orchestrator’s single `app
 - Other builders’ sessions
 - Broad destructive deletes
 
-You MAY use read-only MCP: `app_get`, `data_list` / `data_get`, `workspace_get`, `block_type_fs_*`.
+You MAY use read-only MCP: `app_get`, `data_list` / `data_get`, `workspace_get`, `fs_*`.
 
 ## Build order
 

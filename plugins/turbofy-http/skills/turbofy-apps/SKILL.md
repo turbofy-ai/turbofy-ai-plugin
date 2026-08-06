@@ -126,7 +126,7 @@ There is **no** local app directory and **no** `app_pull`.
 - `appId` must match `manifest.app.id`.
 - Validates slug type refs, block→blockType refs, and dynamic-field JS; applies **copies guards** on `defaultConfig` / instance `config` (you supply the user JS; the platform wraps/merges `copies`).
 - Prefer **unwrapped** user `defaultConfig` when editing, e.g. `return ({ signalTableId: "wGluy5" });` — do not hand-maintain the `/* @graphapi-io/wrap:bt-copies-* */` wrapper; push re-applies it.
-- **React source compile/upload is separate:** after adding a new block type (or changing `index.tsx`), use `block_type_open` → `block_type_fs_*` → `block_type_check` → `block_type_push` (`turbofy-blocks`). Then re-run `app_get` before your next `app_push`, so the manifest carries the new `sourceCodeUrl` / `compiledCodeUrl` (a stale manifest reverts them).
+- **React source compile/upload is separate:** after adding a new block type (or changing `index.tsx`), use `block_type_open` → `fs_*` → `block_type_check` → `block_type_push` (`turbofy-blocks`). Then re-run `app_get` before your next `app_push`, so the manifest carries the new `sourceCodeUrl` / `compiledCodeUrl` (a stale manifest reverts them).
 - Always dry-run before apply.
 
 ### Slug validation rules (enforced on push)

@@ -94,7 +94,7 @@ Tool names are unprefixed (`list_workspaces`, `workspace_get`, …). Hosts may s
 
 **Block type sources** (details in `turbofy-blocks`):
 
-- `block_type_open`, `block_type_fs_list`, `block_type_fs_read`, `block_type_fs_write`, `block_type_check`, `block_type_push`
+- `block_type_open`, `fs_list`, `fs_read`, `fs_write`, `block_type_check`, `block_type_push`
 
 **Flows** (details in `turbofy-flows`):
 
