@@ -69,7 +69,7 @@ There is **no local file root**. Do not create or edit files under `~/.turbofy`.
 
 ## 3) MCP tools at a glance
 
-Tool names are unprefixed (`list_workspaces`, `workspace_get`, …). Hosts may show them as `mcp__turbofy-http__<tool>` (from this plugin's MCP server key).
+Tool names are unprefixed (`list_workspaces`, `workspace_get`, …). Hosts may show them as `mcp__Turbofy__<tool>` (from this plugin's MCP server key).
 
 **Discovery:**
 

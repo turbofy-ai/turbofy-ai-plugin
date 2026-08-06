@@ -2,12 +2,12 @@
   "name": "turbofy-http",
   "displayName": "Turbofy HTTP",
   "description": "Turbofy HTTP MCP plus guidance skills for schema/apps/flows as JSON and remote block build sessions.",
-  "version": "0.0.10",
+  "version": "0.0.11",
   "author": {
     "name": "Turbofy",
     "email": "hello@turbofy.com"
   },
-  "logo": "./assets/turbofy-ai-logo.png",
+  "logo": "../assets/turbofy-ai-logo.png",
   "homepage": "https://github.com/turbofy-ai/turbofy-ai-plugin",
   "repository": "https://github.com/turbofy-ai/turbofy-ai-plugin",
   "license": "MIT",
