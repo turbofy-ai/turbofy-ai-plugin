@@ -82,6 +82,7 @@ Pass **`orgId` + `workspaceId`** on every call (see `turbofy-platform`).
 | `data_list` (`ofType: "cmsapp"`) | List apps in the workspace (ids + names + settings) |
 | `app_get` | Full JSON manifest, including document metadata (edit structure, then push) |
 | `app_init` | Create app + default Home page; returns the new manifest |
+| `app_pull` | Materialize the whole app as a browsable file tree in the session workspace (pages, schema, all block sources, docs). Read-mostly — see § 5. |
 | `app_push` | Validate + reconcile pages / blocks / block types / copies from a modified manifest. **`dryRun` defaults to `true`**. Does **not** compile React sources — use `block_type_push` for that. |
 | `app_document_get` | Read one document by `appId` + `path`; discover paths in `app_get.documents` |
 | `app_document_put` | Create or replace a private Markdown document (64 KiB UTF-8 maximum) |
@@ -89,7 +90,7 @@ Pass **`orgId` + `workspaceId`** on every call (see `turbofy-platform`).
 
 There is no `app_document_list`; use the `documents` array already returned by `app_get`.
 
-There is **no** local app directory and **no** `app_pull`.
+There is no app checkout on the user's machine — `app_pull` materializes the tree in the **remote session workspace**, explored with the `fs_*` tools.
 
 ### System CMS `ofType` map (for occasional `data_*`)
 
@@ -185,6 +186,38 @@ Login/signup pages must remain publicly reachable. Login/Signup system blocks ca
 | `turbofy-schema-builder` | schema JSON via `workspace_get` / `workspace_schema_push` | pages/blocks |
 
 Typical multi-section build: orchestrator `app_get` → schema if needed → parallel block builders (React + intended config/copies) → orchestrator merges into one manifest → `app_push` dry-run/apply → each builder (or orchestrator) runs `block_type_push` for sources.
+
+---
+
+## 5) The pulled app tree (`app_pull` + `fs_*`)
+
+`app_pull` with `{ orgId, workspaceId, appId }` materializes the entire app in the session workspace at `workspaces/<environment>/<workspaceId>/apps/<appId>/`:
+
+```
+app.ts                      # barrel: page imports + buildApp (generated)
+pages/<pageId>.ts           # one module per page (generated)
+schema.ts                   # workspace schema as TS DSL (generated)
+block-types/<Name>/record.ts   # block type manifest (generated)
+block-types/<Name>/index.tsx   # React sources — editable
+block-types/index.ts        # barrel (generated)
+docs/*.md                   # app documents (generated from appdocument records)
+package.json                # user-owned: survives re-pulls
+.base/                      # server-maintained pull baseline — never write here
+```
+
+The result lists `pageFiles` (path + id + name + slug per page), block type dirs, and document files. Explore with `fs_list` / `fs_read` / `fs_search` — this is the fastest way to understand a whole app (one call instead of `app_get` + `block_type_open` per type).
+
+**What is editable:**
+
+- `block-types/<Name>/index.tsx` and sibling sources — the same files `block_type_check` / `block_type_push` compile. After `app_pull` there is no need to call `block_type_open` per type; the sources are already in the tree.
+- New scratch files anywhere outside `.base/`.
+
+**What is generated (treat as read-only):** `app.ts`, `pages/*.ts`, `schema.ts`, `record.ts` files, `docs/*.md`. Structural changes still go through `app_get` → edit manifest → `app_push` (§ 3); docs through `app_document_put`. There is **no tree-based push yet** — edits to generated files are not applied anywhere, and a later `app_pull` will refuse to overwrite them:
+
+- `app_pull` compares generated files against the hashes from the last pull and **fails with a list of modified files** if any changed. Re-run with `force: true` to discard those edits, or revert them first.
+- After `app_push` changes structure, re-run `app_pull` (it refreshes the tree; unchanged user files and `package.json` survive).
+
+**Persistence:** the tree is persisted write-through to workspace storage. Session expiry (≈1h) is transparent — the next `fs_*` or `app_pull` call restores the tree, including your edits. Edits made seconds before an expiry can be lost; re-check with `fs_read` after long gaps.
 
 ---
 

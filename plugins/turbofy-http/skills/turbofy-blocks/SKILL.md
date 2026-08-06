@@ -20,20 +20,23 @@ There is no local app checkout. Edit React sources through MCP:
 
 | Tool | Purpose |
 |---|---|
-| `block_type_open` | Open a block type by `blockTypeId` into the user's build session; starts dependency install (async). Returns file paths and the block type's `appId`. |
+| `app_pull` | Materialize the **whole app** (all block sources + pages + schema + docs) into the session tree; starts dependency install (async). Preferred when touching more than one block type — see `turbofy-apps` § 5. |
+| `block_type_open` | Open a single block type by `blockTypeId` into the user's build session; starts dependency install (async). Returns file paths and the block type's `appId`. |
 | `fs_list` | List files (`apps/<appId>/block-types/…` or `workspaces/<environment>/<workspaceId>/apps/<appId>/block-types/…`) |
-| `fs_read` | Read a file |
-| `fs_write` | Write full UTF-8 file content |
+| `fs_read` | Read a file (optional `offset` / `limit` line range) |
+| `fs_write` | Write full UTF-8 file content (new files; prefer `fs_edit` for existing) |
+| `fs_edit` | Exact string replacements in an existing file (atomic, in-order) |
+| `fs_search` | Grep the session tree (regex or `fixedStrings`), skips `node_modules` |
 | `block_type_check` | `tsc` + esbuild check (requires `appId`; needs session deps ready) |
 | `block_type_push` | Compile, upload source + artifact, update the `cmsbuildingblocktype` record. Requires `appId` + `blockTypeId`. Run `block_type_check` first. |
 
-All calls need `orgId` + `workspaceId`.
+All calls need `orgId` + `workspaceId`. Session edits persist across sessions (write-through to workspace storage; restored transparently).
 
 ### Loop
 
 1. Ensure the block type exists on the app (via `app_get` / `app_push` — metadata, `localizations`, `defaultConfig`).
 2. Resolve `blockTypeId` (and `Name`) from `app_get`.
-3. `block_type_open` → wait until session `workspaceSetup.state` is `ready`.
+3. `app_pull` (whole app — sources for every block type land in the tree) **or** `block_type_open` (one type) → wait until the install is ready (`install.state` / `workspaceSetup.state`).
 4. `fs_read` / `fs_write` under `apps/<appId>/block-types/<Name>/` (or the scoped `workspaces/…` form returned by open).
 5. `block_type_check` with `{ orgId, workspaceId, appId, blockTypeName }` → fix errors → `block_type_check` again.
 6. `block_type_push` with `{ orgId, workspaceId, appId, blockTypeId }`.
