@@ -101,9 +101,13 @@ Step chain: `getHistory` → `createDraft` → `generateReply` (`streamText`) �
       "nextStep": "generateReply",
       "params": {
         "ofType": "<messageTableId>",
-        "fields": "({ threadId: state.onUserMessage.threadId, role: 'assistant', content: '', isComplete: false })"
+        "fields": "({ threadId: state.onUserMessage.threadId, role: 'assistant', content: '', isComplete: false })",
+        "dynamicArgs": "({ ownerSub: state.onUserMessage.pbac0sub })"
       },
-      "paramsConfig": { "fields": { "language": "js", "type": "logic" } }
+      "paramsConfig": {
+        "fields": { "language": "js", "type": "logic" },
+        "dynamicArgs": { "language": "js", "type": "logic" }
+      }
     },
     "generateReply": {
       "id": "generateReply",
@@ -147,6 +151,7 @@ Step chain: `getHistory` → `createDraft` → `generateReply` (`streamText`) �
 Key details:
 
 - **`apiKey` is a secret reference**: the param value is the secret **record UUID** (`data_list` with `ofType: "secret"`), marked in `paramsConfig` as `{ "type": "secret" }`. Never a plaintext key. Users create secrets in the dashboard.
+- **Forward ownership on `createDraft`**: the TABLE_DATA_CHANGE trigger payload includes `pbac0sub` from the user message. Pass it as `dynamicArgs.ownerSub` so the assistant draft is owned by the same end user. Without this, the flow writes as elevated IAM with no end-user owner — the client cannot list the reply or receive its WebSocket events under PBAC.
 - History comes back newest-first (`DESC` + `limit` = the recent window); `.reverse()` restores chronological order for the LLM.
 - Chunk values are the **accumulated full text**, not deltas — each update simply overwrites `content`. `isComplete` flips to `true` on the final `streamResult` (or `error`); the block uses it to stop its streaming cursor.
 
@@ -257,6 +262,7 @@ Key points:
 - **Always use `streamText` for chatbots** — `generateText` waits for the full reply and feels broken in a chat UI.
 - **Stream chunks are accumulated text**, not deltas.
 - **WS events are access-controlled** — end users only receive events for records their read-access policy allows, so scope Message/Thread auth accordingly if threads must be private per user.
+- **Forward `pbac0sub` → `ownerSub` on assistant creates** — `createDraft` must set `dynamicArgs: ({ ownerSub: state.onUserMessage.pbac0sub })`. Otherwise the reply is not owned by the user and will not show up via list/WS under PBAC.
 - **Public pages don't receive WS events** — the WebSocket requires a valid end-user token, so chatbots currently only work on private (authenticated) pages. A chat block on a public page will store and answer messages, but the reply only shows up after a reload.
 
 ## See also
