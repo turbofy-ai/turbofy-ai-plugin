@@ -13,7 +13,7 @@
       "displayName": "Turbofy",
       "source": "./plugins/turbofy",
       "description": "Turbofy MCP integration (local @turbofy-ai/mcp) plus guidance skills for building apps, block types, and dynamic fields.",
-      "version": "0.0.10",
+      "version": "0.0.11",
       "author": {
         "name": "Turbofy",
         "email": "hello@turbofy.com"
@@ -33,7 +33,7 @@
       "displayName": "Turbofy HTTP",
       "source": "./plugins/turbofy-http",
       "description": "Turbofy HTTP MCP plus guidance skills for schema/apps/flows as JSON and remote block build sessions.",
-      "version": "0.0.11",
+      "version": "0.0.12",
       "author": {
         "name": "Turbofy",
         "email": "hello@turbofy.com"

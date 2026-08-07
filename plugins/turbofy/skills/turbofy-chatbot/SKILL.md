@@ -117,6 +117,10 @@ export const flow = flowBuilder.buildFlow({
         fields: flowBuilder.js(
           "({ threadId: state.onUserMessage.threadId, role: 'assistant', content: '', isComplete: false })",
         ),
+        // REQUIRED — attribute the draft to the user who sent the trigger message
+        dynamicArgs: flowBuilder.js(
+          "({ ownerSub: state.onUserMessage.pbac0sub })",
+        ),
       },
     }),
     flowBuilder.step.genericAI("generateReply", {
@@ -146,6 +150,8 @@ export const flow = flowBuilder.buildFlow({
 ```
 
 Chunk values are the **accumulated full text**, not deltas — each update simply overwrites `content`. `isComplete` flips to `true` on the final `streamResult` (or `error`); the block uses it to stop its streaming cursor.
+
+**Ownership forwarding:** the TABLE_DATA_CHANGE trigger payload includes `pbac0sub` from the inserted user message. Pass it as `dynamicArgs.ownerSub` on `createDraft` so the assistant message is owned by the same end user. Without this, the flow writes as elevated IAM with no end-user owner — the client cannot list the reply or receive its WebSocket events under PBAC.
 
 ### Why the trigger condition is mandatory
 
@@ -266,6 +272,7 @@ Key points:
 - **Always use `streamText` for chatbots** — `generateText` waits for the full reply and feels broken in a chat UI.
 - **Stream chunks are accumulated text**, not deltas.
 - **WS events are access-controlled** — end users only receive events for records their read-access policy allows, so scope Message/Thread auth accordingly if threads must be private per user.
+- **Forward `pbac0sub` → `ownerSub` on assistant creates** — `createDraft` must set `dynamicArgs: flowBuilder.js("({ ownerSub: state.onUserMessage.pbac0sub })")`. Otherwise the reply is not owned by the user and will not show up via list/WS under PBAC.
 - **Public pages don't receive WS events** — the WebSocket requires a valid end-user token, so chatbots currently only work on private (authenticated) pages. A chat block on a public page will store and answer messages, but the reply only shows up after a reload.
 
 ## See also
