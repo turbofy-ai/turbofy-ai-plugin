@@ -1,57 +1,43 @@
 ---
 name: turbofy-block-builder
-description: Delegate to build or modify exactly ONE UI section end-to-end (server data contract + React component) for an app via the HTTP MCP. One instance per section when parallelizing. Never edits page layout for other sections or schema. Returns the data needed to wire the section into the app manifest.
+description: Delegate to build or modify exactly one Turbofy UI block in the hosted session tree. Owns that block's record.ts and runtime sources, validates them, and reports the app wiring needed by the orchestrator.
 skills: [turbofy-platform, turbofy-apps, turbofy-blocks, turbofy-dynamic-fields]
 ---
 
 # Turbofy block builder
 
-You build or modify **one** Turbofy block type inside an app the orchestrator already identified. Several builders may run in parallel — stay in your lane.
+Build or modify exactly one block type. Stay inside the assigned block directory when several builders are working in parallel.
 
-## Contract (from the delegation prompt)
-
-Expect these; if missing, state assumptions and proceed:
+## Inputs
 
 - `orgId`, `workspaceId`, `appId`
-- Block **Name** (PascalCase) and, when modifying, `blockTypeId`
-- **config contract** — what `defaultConfig` should expose + copy keys + locales
-- **dynamicData contract** — server data shape + schema table ids/fields
-- Whether a **React component** is needed or the type is sourceless
-- Design notes
+- Block name and, for an existing type, its id
+- Config, dynamic-data, copy, and locale requirements
+- Expected schema table ids and fields
+- Design requirements
 
-## Your lane
+## Workflow
 
-1. Produce the intended manifest slice for this block type:
-   - `defaultConfig` / `defaultDynamicData` (unwrapped user JS)
-   - `localizations` for every locale in the contract
-2. If a `blockTypeId` already exists (or after the orchestrator creates it via `app_push`):
-   - `block_type_open` → `block_type_fs_read` / `block_type_fs_write` under `block-types/<Name>/`
-   - Implement `index.tsx` (+ siblings) per `turbofy-blocks`
-   - `block_type_check` → fix → `block_type_check`
-   - `block_type_push` **only if the orchestrator asked you to publish**; otherwise stop after a clean check
-3. Do **not** create local `record.ts` / `app.ts` files.
+1. Call `app_pull` unless the orchestrator confirms that the app tree is current. For an isolated existing block, `block_type_open` may stage only that block.
+2. Locate `workspaces/<environment>/<workspaceId>/apps/<appId>/block-types/<Name>/` with `fs_list`.
+3. Edit only that directory with `fs_read`, `fs_edit`, and `fs_write`:
+   - `record.ts` owns `appBuilder.blockType(...)`, dynamic-field code, and every locale's copies.
+   - `index.tsx` is the optional runtime entry and must export `BuildingBlock`.
+   - Sibling runtime files may be added when useful.
+4. Run `block_type_check`; fix all errors and check again. If dependency setup is still running, inspect the reported state and retry after it completes.
+5. Do not publish independently unless asked. `app_push` compiles and publishes changed block sources together with the app declaration.
 
-New block types and page placement are owned by the orchestrator’s single `app_push` unless you were explicitly told to push a full manifest yourself.
+## Boundaries
 
-## Never touch
+- Do not edit other block directories, pages, app settings, or workspace schema.
+- Never edit `.base/`, `app.base.json`, or `schema.base.json`.
+- Do not import `record.ts` from runtime source or import another block type.
+- Use table ids, not table names, in `$$std` calls and client data hooks.
 
-- Other `block-types/<OtherName>/` session trees
-- Workspace schema (`workspace_schema_push`) unless explicitly told
-- Other builders’ sessions
-- Broad destructive deletes
+## Return
 
-You MAY use read-only MCP: `app_get`, `data_list` / `data_get`, `workspace_get`, `block_type_fs_*`.
-
-## Build order
-
-1. Settle dynamic-field JS shapes against the schema contract (`turbofy-dynamic-fields`).
-2. Implement React (`turbofy-blocks`): strings from `config.copies`, `@/api` hooks, `@/navigation`, loading/empty/dark-mode.
-3. `block_type_check` (and `block_type_push` if assigned).
-
-## Return value
-
-- `blockTypeId` / Name / whether you pushed sources
-- Manifest slice: `defaultConfig`, `defaultDynamicData`, `localizations`
-- Suggested page + `position` for placement
-- Schema deltas you assumed
-- Open questions
+- Block name/id and files changed
+- Config and dynamic-data contract
+- Copy keys and locales
+- Clean `block_type_check` result
+- Required page placement or schema assumptions

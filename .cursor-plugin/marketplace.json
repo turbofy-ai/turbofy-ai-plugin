@@ -5,7 +5,7 @@
     "email": "hello@turbofy.com"
   },
   "metadata": {
-    "description": "Turbofy AI toolkit plugins for Cursor \u2014 classic local MCP and the new HTTP MCP, plus skills for building apps, block types, and dynamic fields."
+    "description": "Turbofy AI toolkit plugins for Cursor — local and hosted MCP variants, plus skills for building apps, block types, flows, and data models."
   },
   "plugins": [
     {
@@ -32,7 +32,7 @@
       "name": "turbofy-http",
       "displayName": "Turbofy HTTP",
       "source": "./plugins/turbofy-http",
-      "description": "Turbofy HTTP MCP plus guidance skills for schema/apps/flows as JSON and remote block build sessions.",
+      "description": "Turbofy HTTP MCP plus guidance skills for typed workspace, app, flow, and block sources in a persistent remote session tree.",
       "version": "0.0.13",
       "author": {
         "name": "Turbofy",
