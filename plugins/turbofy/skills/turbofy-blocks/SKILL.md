@@ -243,6 +243,7 @@ Blocks should feel cohesive across an entire app, not like isolated islands with
 - All interactive components must follow `shadcn/ui` accessibility patterns (focus states, ARIA roles).
 - Touch targets ≥ 44px.
 - Use semantic HTML elements (`header`, `nav`, `main`, `section`, `footer`).
+- **Landmarks (classic sites with header / nav / main / footer):** wrap all page content in navigational regions using **both** HTML5 elements and their ARIA counterparts so screen readers can jump between sections regardless of technology. Pair them as: `<header role="banner">`, `<nav role="navigation">`, `<main role="main">`, `<footer role="contentinfo">`. One `banner`, one `main`, and one `contentinfo` per page; multiple `navigation` regions are fine (give each a distinct accessible name via `aria-label` when there is more than one).
 - Decorative images get `alt=""`. Informational images get descriptive `alt` text from copies.
 - Ensure keyboard navigation works: all interactive elements reachable via Tab, activatable via Enter/Space.
 - Never rely on color alone to convey information — pair with text, icons, or patterns.
