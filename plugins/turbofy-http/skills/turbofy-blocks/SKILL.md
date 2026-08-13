@@ -1,73 +1,44 @@
 ---
 name: turbofy-blocks
-description: "Use when building or styling a UI section/component in a Turbofy app — navigation bars, hero banners, product grids, search boxes, forms, footers, cards, lists, filters, or any interactive page section. Triggers: 'build a navigation bar', 'create a product listing', 'style the hero', 'add a search box', 'make this section responsive', 'add dark mode', 'show loading/empty states', 'fetch data in this component', or when editing a block type's React source. Covers the remote block_type_* build session, React block components, translations/copies, navigation, data hooks, and UI/accessibility rules. For placing a section on a page or editing defaultConfig/localizations, load turbofy-apps (app_push). For server-side data that feeds the section, load turbofy-dynamic-fields."
-disable-model-invocation: false
+description: "Use when building or styling a Turbofy UI block such as navigation, hero, product grid, search, form, footer, card, filter, or interactive section, or when editing block-types/* runtime source. Covers the hosted app tree, block_type_open/block_type_check, React props, copies, navigation, data hooks, and UI/accessibility rules. For placement and record.ts metadata load turbofy-apps; for server data logic load turbofy-dynamic-fields."
 ---
 
 # Turbofy Blocks
 
-Runtime React component for a Turbofy block type. Sources live in a **remote build session** (not under `~/.turbofy`). Companions: `turbofy-apps` (placement / manifest / `app_push`), `turbofy-dynamic-fields` (`defaultConfig` / `defaultDynamicData`).
+A block type has build metadata in `record.ts` and optional React runtime source beginning at `index.tsx`. Both live in the hosted session tree.
 
-## When to load this skill
+## Source workflow
 
-Load when the user wants to **build or restyle a page section** — e.g. "create a product grid", "add a sticky navbar".
+For app-wide work:
 
----
+1. `app_pull` materializes every block under `workspaces/<environment>/<workspaceId>/apps/<appId>/block-types/`.
+2. Inspect and edit with shared `fs_*` tools.
+3. Run `block_type_check` for each changed sourced block.
+4. `app_push` dry-runs, then compiles and publishes changed block sources together with app declarations when called with `dryRun: false`.
 
-## 1) Remote build session (`block_type_*`)
+For an isolated existing block, `block_type_open` can stage just that block before the same `fs_*` and `block_type_check` loop. It may start dependency installation asynchronously; wait for the returned setup state before checking.
 
-There is no local app checkout. Edit React sources through MCP:
-
-| Tool | Purpose |
-|---|---|
-| `block_type_open` | Open a block type by `blockTypeId` into the user's build session; starts dependency install (async). Returns file paths. |
-| `block_type_fs_list` | List files (`block-types/…` or `ws-<workspaceId>/block-types/…`) |
-| `block_type_fs_read` | Read a file |
-| `block_type_fs_write` | Write full UTF-8 file content |
-| `block_type_check` | `tsc` + esbuild check (needs session deps ready) |
-| `block_type_push` | Compile, upload source + artifact, update the `cmsbuildingblocktype` record. Requires `appId` + `blockTypeId`. Run `block_type_check` first. |
-
-All calls need `orgId` + `workspaceId`.
-
-### Loop
-
-1. Ensure the block type exists on the app (via `app_get` / `app_push` — metadata, `localizations`, `defaultConfig`).
-2. Resolve `blockTypeId` (and `Name`) from `app_get`.
-3. `block_type_open` → wait until session `workspaceSetup.state` is `ready`.
-4. `block_type_fs_read` / `block_type_fs_write` under `block-types/<Name>/` (or the `ws-…` form returned by open).
-5. `block_type_check` → fix errors → `block_type_check` again.
-6. `block_type_push` with `{ orgId, workspaceId, appId, blockTypeId }`.
-7. Confirm with `app_get` (`sourceCodeUrl` / `compiledCodeUrl` updated).
-
-`app_push` does **not** compile React sources. `block_type_push` does **not** reconcile pages/block placement — use `app_push` for that.
-
-### Creating a new block type
-
-1. `app_get` → add a `blockTypes[]` entry (`name`, `localizations`, `defaultConfig` / `defaultDynamicData` as needed). For a brand-new type, follow dry-run feedback on whether to omit `id` or supply a client id.
-2. Place instances under `pages[].blocks` with `blockTypeId` + `position`.
-3. `app_push` (dry-run then apply).
-4. Run the `block_type_*` loop above for `index.tsx`.
-
-### Layout inside the session
-
-```
+```text
 block-types/<Name>/
-  index.tsx          # required entry — named export BuildingBlock
-  helpers.ts         # optional siblings
-  …
+  record.ts   # appBuilder.blockType declaration; not runtime code
+  index.tsx   # optional entry; named export BuildingBlock
+  helpers.ts  # optional sibling runtime source
+  styles.css  # optional sibling runtime source
 ```
 
-- One folder per block type. Sibling imports only; **no imports of other block types**.
-- Allowed: `.ts`, `.tsx`, `.js`, `.jsx`, `.css`, `.json`.
-- Entry must export `BuildingBlock`.
-- Dependencies: only what the session stdlib provides (React, zod, Tailwind, lucide-react, shadcn via `@/components/ui/*`, `@/api`, `@/navigation`, …).
+Rules:
 
----
+- Do not import `record.ts` from runtime source.
+- Runtime files may import siblings, but never another block type or app files outside their boundary.
+- Supported runtime sources are `.ts`, `.tsx`, `.js`, `.jsx`, `.css`, and `.json`.
+- A block type without `index.tsx`/`index.ts` is valid and sourceless.
+- Add custom dependencies to the app's user-owned `package.json`; pulls preserve it.
+- Never edit `.base/` or `app.base.json`.
 
-## 2) `IBuildingBlockProps`
+## Runtime props
 
 ```ts
-export type IBuildingBlockProps<TConfig = any> = PropsWithChildren<{
+export type IBuildingBlockProps<TConfig = unknown> = PropsWithChildren<{
   blockId: string;
   locale: string;
   config: TConfig;
@@ -79,137 +50,88 @@ export type IBuildingBlockProps<TConfig = any> = PropsWithChildren<{
 }>;
 ```
 
-| Prop | Notes |
-|---|---|
-| `locale` | **Only** source of language — never URL / navigator |
-| `config` | Static config; **UI strings at `config.copies`** |
-| `dynamicData` | Optional SSR snapshot; if used, handle `undefined` as loading |
-| `searchParams` / `params` / `slug` | From props only — never `window.location`. `searchParams` is the render-time snapshot; for live values after shallow navigation use `useSearchParams()` from `@/navigation` |
+- `locale` is the language source; do not infer it from the browser URL.
+- User-visible strings come from `config.copies`.
+- `dynamicData` is the optional server-rendered snapshot. Treat `undefined` as loading and an inner `null` as empty/not found.
+- Read route state from `params`, `slug`, and `searchParams`, not `window.location`.
+- For live query-string state after shallow navigation, use `useSearchParams()` from `@/navigation`.
 
-### Coding rules
-
-- **Copies:** all user-visible text from `config.copies` (flat object). Prefer zod defaults for missing keys. No `t()` helpers. Rare escape: `useTranslations`. Maintain dictionaries in the app manifest (`blockTypes[].localizations`) via `app_push`.
-- **Navigation:** `navigate` / `Link` from `@/navigation` only. Resolve paths with `useLinks` (client) or `$$std.batchLink` (server) — do not hand-build localized URLs.
-- **Query-param state (filters / search / tabs):** `navigate(path, { shallow: true, replace: true })` updates the URL without re-rendering the page; a query-only path (`"?q=shoes"`) keeps the current pathname. Read reactively with `useSearchParams()` from `@/navigation` (returns `Record<string, string>`); the `searchParams` prop remains the render-time snapshot for initial state. Use `replace: true` when syncing rapidly-changing state (typing in a search box) to avoid history spam.
-- **Styling:** Tailwind. Prefer shadcn/ui for interactive primitives.
-- **Loading:** if you read `dynamicData`, skeleton when `undefined`; treat inner `null` as empty/not found. Skeleton footprint ≈ final layout.
-- **Table IDs:** all `@/api` hooks and `$$std` helpers take **table ids** from `workspace_get` → `schema.types[].id`, never table names. System CMS: `"cmspage"`, `"cmslocalization"`, `"filedocument"`, etc.
-
-### Localizations & `defaultConfig`
-
-Edit via **`app_push`** on the manifest (`turbofy-apps`). Prefer unwrapped user config JS; the platform applies copies guards. React-only changes: `block_type_*` loop above.
-
----
-
-## 3) Data fetching patterns
-
-| Tool | Where | Use for |
-|---|---|---|
-| `config` (`defaultConfig`) | Server | Static: copies (injected), links, layout; depends on `$$args.lang` |
-| `dynamicData` | Server | Initial route/query data (`$$args.params` / `searchParams`) — SSR apps |
-| `useTypeQuery` / `useListTypes` / `useListTypesByParent` | Client | Live lists/records (SPA + post-SSR interactivity) |
-| `useSearchTypes` / `searchTypes` | Client | Full-text search (workspace search must be enabled) |
-| `useLinks` / `useTranslations` / `useFileDocuments` | Client | Resolve after client fetch |
-| `useUploadFile` | Client | Uploads |
-
-**SPA / internal tools:** `config` for copies/links only; **no** `dynamicData`; fetch with hooks.
-
-**SSR sites:** `config` + `dynamicData` for first paint; hooks for filters/pagination/mutations after load.
-
-### Server-side examples (dynamic field JS)
-
-```js
-// defaultConfig — static
-const [productsPath] = $$std.batchLink([{ pageId: "PAGE_ID" }]);
-({ productsPath, columns: 3 });
-```
-
-```js
-// defaultDynamicData — route-dependent
-const productId = $$args.params?.productId;
-const product = $$std.getRecord("TABLE_ID", productId, { dynamicArgs: $$args });
-({ product });
-```
-
-See `turbofy-dynamic-fields` for the full `$$std` API.
-
-### Client hooks (essentials)
+Example:
 
 ```tsx
-import { useListTypes, useLinks, useSearchTypes, useUploadFile } from "@/api";
-import { Link, navigate, useSearchParams } from "@/navigation";
+import type { IBuildingBlockProps } from "@/lib/types";
 
-// URL-synced filter state: read live, write shallow
-const searchParams = useSearchParams();
-const setQuery = (q: string) =>
-  navigate(`?q=${encodeURIComponent(q)}`, { shallow: true, replace: true });
+interface IConfig {
+  copies?: { title?: string; empty?: string };
+}
 
-const { data: products } = useListTypes(productTableId);
-const { result: productLinks } = useLinks(
-  (products ?? []).map((p) => ({
-    pageId: productPageId,
-    path: `/products/${p.id}`,
-  })),
-);
-
-const { isPending, data } = useSearchTypes(
-  productTableId,
-  searchQuery,
-  ["name", "description"],
-  { dynamicArgs: { lang: locale }, limit: 50 },
-);
+export const BuildingBlock = ({ config, dynamicData }: IBuildingBlockProps<IConfig>) => {
+  if (dynamicData === undefined) return <div className="h-32 animate-pulse rounded-xl bg-muted" />;
+  return <section><h2>{config.copies?.title}</h2></section>;
+};
 ```
 
-`useSearchTypes`: non-empty `query` + `fields` required or it no-ops. No server-side `$$std.searchTypes`.
+## Config, data, and copies
 
----
+Edit `record.ts` for type-level metadata:
 
-## 4) UI & UX (required)
+- `defaultConfig`: static server-side config such as copies, links, and layout settings
+- `defaultDynamicData`: route/query-dependent initial data
+- `localizations`: flat copy dictionaries keyed by app locale
 
-Production-ready, responsive, consistent. Prefer shadcn/ui over raw HTML for interactive controls.
+Page modules may add per-instance `config`, `dynamicData`, and `localizations` on `appBuilder.block(...)`.
 
-### Typography
+The builder injects localized dictionaries into `config.copies`. Never recreate that wrapper or hardcode translated UI text in React. Add every copy key to every app locale; empty placeholders are allowed.
 
-| Role | Classes |
+Use `turbofy-dynamic-fields` for `$$self`, `$$args`, and `$$std` syntax.
+
+## Data access
+
+Use table ids from `schema.ts`/`table_list`, never display names.
+
+| Surface | Use |
 |---|---|
-| Display | `text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight` (max one) |
-| h2 | `text-2xl md:text-3xl font-semibold tracking-tight` |
-| h3 | `text-xl md:text-2xl font-semibold` |
-| Lead | `text-lg md:text-xl text-muted-foreground leading-relaxed` |
-| Body | `text-base leading-relaxed` + `max-w-prose` where appropriate |
-| Caption | `text-sm text-muted-foreground` |
-| Eyebrow | `text-xs font-semibold uppercase tracking-widest text-primary` |
+| `defaultConfig` | Copies, static links, stable layout settings |
+| `defaultDynamicData` | SSR first paint based on route/search params |
+| `useTypeQuery`, `useListTypes`, `useListTypesByParent` | Client reads and interaction |
+| mutation hooks | Client creates, updates, and deletes |
+| `useSearchTypes` | Full-text search when workspace search is enabled |
+| `useLinks`, `useTranslations`, `useFileDocuments` | Client-side resolution after a fetch |
+| `useUploadFile` | Browser uploads |
+| `useWsSubscription` | Server-side record changes delivered to authenticated clients |
 
-Semantic heading order; no skipped levels.
+For SPA dashboards, prefer client hooks and use config only for copies/links. For SSR sites, use `dynamicData` for the first render and hooks for subsequent filtering, pagination, or mutation.
 
-### Layout & color
+## Navigation
 
-- Intentional whitespace; avoid cramped or sparse extremes.
-- Use theme tokens (`bg-background`, `text-foreground`, `text-muted-foreground`, `border-border`, `bg-primary`, …). Support light + dark.
-- Cards only when they group an interaction; prefer open layouts for marketing sections.
+- Import `Link`, `navigate`, and `useSearchParams` from `@/navigation`.
+- Resolve localized links with client `useLinks` or server `$$std.batchLink`; do not concatenate locale paths.
+- Query-only navigation such as `navigate("?q=shoes", { shallow: true, replace: true })` keeps the current pathname and avoids full rerenders.
+- Do not read or write `window.location` directly.
 
-### Interaction & a11y
+## UI requirements
 
-- Visible focus rings; `aria-label` on icon-only controls.
-- `transition-colors duration-200` on interactive elements; motion ≤ 300ms; `motion-safe:` for non-essential motion. **No mount entry animations** (iframe timing).
-- Loading skeletons (`animate-pulse` + `bg-muted`); empty + error states from **copies**, never raw errors.
-- Icons: `lucide-react`, consistent sizes (`size-4` / `size-5` / `size-6`).
+- Use semantic HTML and a correct heading hierarchy.
+- Use Tailwind theme tokens (`bg-background`, `text-foreground`, `text-muted-foreground`, `border-border`, `bg-primary`) and support dark mode.
+- Prefer shadcn/ui primitives for interactive controls and `lucide-react` for icons.
+- Make layouts responsive; use a centered max-width container and intentional spacing.
+- Provide copy-driven loading, empty, and error states. Skeletons should approximate the final footprint.
+- Keep visible focus states and label icon-only controls with `aria-label`.
+- Use short, non-essential motion with `motion-safe:`; avoid mount animations in the iframe.
+- Render only product UI, not implementation notes or design commentary.
 
-### Content rules
+## Validation checklist
 
-Only real product UI copy — no tips, meta-commentary, or styling explanations in the rendered block.
-
----
-
-## 5) Auth system blocks
-
-When an app uses end-user auth (`app.settings.auth`), Login/Signup system blocks call `/api/auth/login` and `/api/auth/signup`. Custom login pages must stay `visibility: "public"`. Configure via `app_push` (`turbofy-apps`).
-
----
+1. `BuildingBlock` is a named export.
+2. TypeScript and imports are clean.
+3. Copy keys exist for every locale.
+4. Data calls use table ids and handle loading/empty/error states.
+5. Navigation uses Turbofy helpers.
+6. `block_type_check` passes before `app_push`.
 
 ## See also
 
-- **`turbofy-apps`** — manifest, `app_push`, localization, placement.
-- **`turbofy-dynamic-fields`** — `$$std` / reserved `dynamicArgs`.
-- **`turbofy-platform`** — `workspace_get` for table ids, CMS ofTypes.
-- **`turbofy-chatbot`** — the full chatbot recipe (Thread/Message tables + reply flow + chat block with `useWsSubscription`). Turbofy has **no chatbot API**.
+- `turbofy-apps` — app tree, page placement, block records, localization, auth
+- `turbofy-dynamic-fields` — server-side config/data runtime
+- `turbofy-platform` — schema, records, and file uploads
+- `turbofy-chatbot` — Thread/Message, flow, and WebSocket chat recipe

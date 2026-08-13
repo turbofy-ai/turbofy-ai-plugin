@@ -1,7 +1,7 @@
 {
   "name": "turbofy-http",
-  "version": "0.0.13",
-  "description": "Turbofy HTTP MCP plus guidance skills for schema/apps/flows as JSON and remote block build sessions.",
+  "version": "0.0.14",
+  "description": "Turbofy HTTP MCP plus guidance skills for typed workspace, app, flow, and block sources in a persistent remote session tree.",
   "author": {
     "name": "Turbofy",
     "email": "hello@turbofy.com"
@@ -21,7 +21,7 @@
   "interface": {
     "displayName": "Turbofy HTTP",
     "shortDescription": "Turbofy HTTP MCP and app-building skills.",
-    "longDescription": "Adds the Turbofy HTTP MCP plus skills for schema/apps/flows as JSON, remote block sessions, dynamic fields, and platform workflows.",
+    "longDescription": "Adds the Turbofy HTTP MCP plus skills for typed workspace, app, flow, and block sources, dynamic fields, and platform workflows.",
     "developerName": "GraphApi.io GmbH",
     "category": "Developer Tools",
     "capabilities": [

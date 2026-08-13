@@ -1,213 +1,150 @@
 ---
 name: turbofy-platform
-description: "Use as the first skill for any Turbofy work — especially when the user asks 'what is Turbofy', 'list my workspaces', 'set up my database', 'add a table or field', 'change my data model', 'add/edit/delete records', 'upload a file', or 'connect to Turbofy'. Also load at the start of a fresh session before calling any Turbofy MCP tool, to pick the right follow-on skill. Covers org/workspace discovery, schema JSON editing, record CRUD, file upload, and core MCP rules. Do NOT use for page layout, placing sections on pages, or building UI components — load turbofy-apps, turbofy-blocks, or turbofy-dynamic-fields instead."
-disable-model-invocation: false
+description: "Use first for Turbofy work, especially organization/workspace discovery, database schema changes, record CRUD, file uploads, or choosing the right follow-on skill. Covers the hosted MCP session tree, workspace_pull → fs_* edit → workspace_push, the schema DSL, data tools, and file_upload/file_upload_intent. For app structure or UI load turbofy-apps or turbofy-blocks."
 ---
 
 # Turbofy Platform
 
-Orientation skill for the Turbofy platform. Load it first in a fresh session, for workspace/schema work, or when choosing which deeper skill to pull in. Companions: `turbofy-apps`, `turbofy-blocks`, `turbofy-dynamic-fields`, `turbofy-flows`.
+Turbofy combines a typed data platform, app builder, automation flows, and a React block runtime. The HTTP MCP keeps editable projects in a persistent remote session tree; use MCP `fs_*` tools to inspect and edit it.
 
-## When to load this skill
+## Start here
 
-| User wants… | Load |
+1. `list_organizations`
+2. `list_workspaces` with the selected `orgId`
+3. Keep `orgId` and `workspaceId` on every scoped call.
+4. Use `table_list` for a quick schema/table overview, or pull the workspace when editing schema.
+
+The active deployment determines `<environment>`. Tool results return the authoritative path; do not guess it.
+
+## Session filesystem
+
+Workspace projects live at:
+
+```text
+workspaces/<environment>/<workspaceId>/
+  schema.ts
+  schema.base.json
+  package.json
+  tsconfig.json
+  apps/<appId>/...
+  flows/<flowId>/...
+```
+
+Use only the MCP filesystem tools:
+
+- `fs_list`, `fs_read`, `fs_search` to inspect
+- `fs_edit` for exact replacements in existing files
+- `fs_write` for new files or deliberate full rewrites
+- `fs_exec` for project commands; long commands can return a task id
+- `fs_task_status` to poll asynchronous work
+
+The tree persists across MCP session restarts. Never edit server baselines such as `schema.base.json`, `app.base.json`, `flow.base.json`, or `.base/` contents.
+
+## Tool map
+
+| Concern | Tools |
 |---|---|
-| Pages, layout, homepage, translate the site | `turbofy-apps` |
-| Build/style a section (navbar, hero, grid) | `turbofy-blocks` |
-| Server data blank, fetch records, URL-based titles | `turbofy-dynamic-fields` |
-| Automations / flows | `turbofy-flows` |
-| Chatbot, AI assistant, conversational feature | `turbofy-chatbot` |
-| Tables, schema, records, workspaces | stay here |
+| Discovery | `list_organizations`, `list_workspaces`, `table_list` |
+| Schema | `workspace_pull`, `workspace_push` |
+| Apps | `app_init`, `app_pull`, `app_push` |
+| Blocks | `block_type_open`, `block_type_check`, shared `fs_*` |
+| Flows | `flow_init`, `flow_pull`, `flow_push`, `flow_delete` |
+| Records | `data_list`, `data_get`, `data_create`, `data_add_many`, `data_update`, `data_delete` |
+| Files | `file_upload`, `file_upload_intent` |
 
----
+Use `dryRun: true` before mutating pushes. It is the default for `workspace_push`, `app_push`, and `flow_push`.
 
-## 1) What is Turbofy?
+## Schema workflow
 
-Turbofy is a platform for building data-driven web applications without deploying backend or frontend infrastructure. The user defines a data schema, fills tables with records, and assembles UI by composing **building blocks** on **pages** inside an **app**. The runtime resolves dynamic content server-side and renders React block components in iframes on the client.
+1. `workspace_pull` materializes `schema.ts` plus the merge baseline.
+2. Read and edit `schema.ts` through `fs_*`.
+3. `workspace_push` compiles, validates, and computes a three-way merge. Review the dry run.
+4. Repeat with `dryRun: false` to apply.
 
-Everything is exposed through the **Turbofy HTTP MCP**. Agents work against remote JSON and a remote block build session — there is **no local workspace checkout** under `~/.turbofy`, and there is **no TypeScript DSL** (`schema.ts` / `app.ts` / `flow.ts` / `record.ts`).
+If remote and session edits overlap, push reports conflicts and applies nothing. Pull the current remote version and reapply the intended changes.
 
-### Mental model
+When schema changes are part of app work, `app_push` also reconciles the app's `schema.ts`. Use `workspace_push` for schema-only work.
 
+### Data-builder DSL
+
+```ts
+import { dataBuilder as builder } from "@graphapi-io/dsl-builders";
+
+const StatusEnum = builder.enumType("Status", ["Active", "Inactive"]);
+
+const ProjectTable = builder.table(
+  "Project",
+  {
+    name: builder.fields.string(),
+    status: builder.fields.enum(StatusEnum),
+  },
+  { directives: ["@required_oncreate"] },
+);
+
+const TaskTable = builder.table(
+  "Task",
+  { title: builder.fields.string() },
+  { firstParent: ProjectTable },
+);
+
+export const schema = builder.build({
+  enums: [StatusEnum],
+  types: [ProjectTable, TaskTable],
+  products: [],
+});
 ```
-Organization
-└── Workspace                                 ← unit of isolation; has a data schema
-    ├── Schema (tables, fields, enums)        ← JSON via workspace_get / workspace_schema_push
-    ├── Records (rows in each table)          ← data_* tools
-    ├── Flow(s)                               ← JSON via flow_list / flow_get / flow_upsert
-    └── App(s)                                ← JSON via app_get / app_push / app_init (list via data_list cmsapp)
-        ├── Pages + BuildingBlocks            ← edited in the app manifest, pushed with app_push
-        ├── BuildingBlockTypes (metadata)     ← same manifest / app_push
-        ├── Persistent Markdown documents     ← metadata via app_get; content via app_document_*
-        └── React sources                     ← remote session via block_type_* tools
-```
 
-### Which skill covers what
+Field factories include `string`, `integer`, `float`, `boolean`, `id`, `email`, `phone`, `url`, `date`, `dateTime`, `time`, `timestamp`, `json`, `ipAddress`, list variants, `enum`, and `dynamicField`.
 
-| You are working on… | Load |
+Rules:
+
+- Preserve ids emitted for existing declarations; omit ids for new types, fields, and enums.
+- Declare parents before children. A table can use `firstParent` and `secondParent`.
+- Do not add automatic `id`, `createdAt`, or `updatedAt` fields.
+- Include every table and enum in `builder.build(...)`; omission means deletion.
+
+## Record CRUD
+
+Generic `data_*` tools work across workspace tables and system CMS tables. Use the exact table id/`ofType`; runtime code must not substitute display names.
+
+Common system `ofType` values:
+
+| Entity | `ofType` |
 |---|---|
-| Workspace/schema; org/workspace discovery; `workspace_*` / `data_*` / `file_upload` | this skill |
-| Apps CMS model, `app_*` (including `app_push`), pages/blocks/localizations | `turbofy-apps` |
-| Block React sources via `block_type_*` | `turbofy-blocks` |
-| Server-side `@dynamic_field` JS (`defaultConfig`, `defaultDynamicData`, etc.) | `turbofy-dynamic-fields` |
-| Flows (`flow_*` JSON declarations) | `turbofy-flows` |
-| Chatbot / AI assistant (Thread + Message tables, reply flow, chat block — there is no chatbot API) | `turbofy-chatbot` |
+| App | `cmsapp` |
+| Page | `cmspage` |
+| Building block type | `cmsbuildingblocktype` |
+| Building block | `cmsbuildingblock` |
+| Localization | `cmslocalization` |
+| File document | `filedocument` |
+| Slug mapping | `slugmapping` |
+| Secret metadata | `secret` |
 
----
+Prefer app files and `app_push` for app-owned entities. Use `data_*` for ordinary records and targeted inspection. Paginate `data_list` with its returned `nextToken`.
 
-## 2) Workspaces & MCP identity
+## Files
 
-A **workspace** is the unit of isolation. It owns a data schema, records, apps, and flows.
+`file_upload` creates a `FileDocument` and accepts exactly one source:
 
-**Always pass both `orgId` and `workspaceId`.** The MCP does not track an "active workspace". Discover IDs with `list_organizations` and `list_workspaces`.
+- `content` for small UTF-8 text
+- `contentBase64` for small binary payloads already available to the caller
+- `sourceUrl` for a public HTTPS resource; the service downloads it directly and uploads it to storage, so it need not pass through the agent sandbox. URL fetching is capped at 25 MiB.
 
-The bundled plugin points at the **production HTTP MCP** (`https://mcp.turbofy.com/mcp`).
+Supply the MIME type when known; a URL response MIME type can be used otherwise. The default folder is workspace-scoped. The returned record id can be stored anywhere that expects `ofType: "filedocument"`.
 
-There is **no local file root**. Do not create or edit files under `~/.turbofy`. Schema, apps, and flows are edited as JSON through MCP tools. Block React sources are edited inside a remote build session (`block_type_*` tools).
+Use `file_upload_intent` when the bytes are too large or should travel directly from a client to storage. It creates the `FileDocument` and returns a presigned `PUT` request, including the URL, method, and required `Content-Type`. Upload the bytes exactly as instructed; the upload URL is temporary and should not be stored as the asset URL.
 
----
+## Core rules
 
-## 3) MCP tools at a glance
+- Treat ids as opaque and preserve them across edits.
+- Read before write; never push partial declarations.
+- Never expose secret values. Flows reference secret record ids; secret values are managed in the dashboard.
+- When dependency setup is asynchronous, inspect the returned state and retry validation after completion.
 
-Tool names are unprefixed (`list_workspaces`, `workspace_get`, …). Hosts may show them as `mcp__Turbofy__<tool>` (from this plugin's MCP server key).
+## Follow-on skills
 
-**Discovery:**
-
-- `list_organizations`
-- `list_workspaces`
-
-**Workspace schema:**
-
-- `workspace_get` — full workspace + schema JSON (`{ types, enums, products, … }`). Use `schema.types[].id` as the table `ofType` for `data_*` / `$$std`.
-- `workspace_schema_push` — replace schema with the given JSON (`dryRun` defaults to `true`)
-
-**Data CRUD (every table, including system CMS tables):**
-
-- `data_list`, `data_get`, `data_create`, `data_add_many`, `data_update`, `data_delete` (`confirm: true` required for delete)
-
-**Files:**
-
-- `file_upload` — upload text (`content`) or binary (`contentBase64`); creates a `filedocument` record. Optional `folderId` (prefer an app-named folder for app assets).
-
-**Apps** (details in `turbofy-apps`):
-
-- `app_get`, `app_init`, `app_push` (list apps with `data_list` + `ofType: "cmsapp"`)
-- `app_document_get`, `app_document_put`, `app_document_delete` (`app_get.documents` replaces a separate list call)
-
-**Block type sources** (details in `turbofy-blocks`):
-
-- `block_type_open`, `block_type_fs_list`, `block_type_fs_read`, `block_type_fs_write`, `block_type_check`, `block_type_push`
-
-**Flows** (details in `turbofy-flows`):
-
-- `flow_list`, `flow_get`, `flow_upsert` (`dryRun` defaults to `true`)
-
----
-
-## 4) Core MCP rules
-
-**Pass `orgId` + `workspaceId` on every workspace-scoped call.**
-
-**Read before write.** Fetch with `data_get` / `workspace_get` / `app_get` / `flow_get` before updating or deleting.
-
-**Verify after write.** Re-fetch or re-list. Prefer `dryRun: true` on `workspace_schema_push`, `app_push`, and `flow_upsert` before applying (`dryRun: false`).
-
-**Treat IDs correctly.**
-
-- **Workspace table IDs** (`ofType`) are workspace-specific. Resolve via `workspace_get` → `schema.types[].id` (and `name` for humans).
-- **System CMS table IDs** are stable and are **not** part of the workspace schema. When calling `data_*`, pass the literal string:
-
-  | Entity | MCP `ofType` |
-  |---|---|
-  | App | `"cmsapp"` |
-  | Page | `"cmspage"` |
-  | BuildingBlockType | `"cmsbuildingblocktype"` |
-  | BuildingBlock | `"cmsbuildingblock"` |
-  | Localization | `"cmslocalization"` |
-  | AppDocument | `"appdocument"` |
-  | EntityLocalization | `"localization"` |
-  | Api | `"cmsapi"` |
-  | FileDocument | `"filedocument"` |
-  | SlugMapping | `"slugmapping"` |
-  | Code | `"code"` |
-  | Secret | `"secret"` |
-
-**Pagination.** `data_list` is capped; use returned `nextToken`.
-
-**Legacy `@cms_*` tables.** Some older workspaces still embed CMS tables in the workspace schema. Prefer system CMS `ofType` strings above. If app tooling refuses to operate, the workspace may need migration — contact the workspace owner.
-
----
-
-## 5) Workspace schema workflow
-
-Schema is **JSON**, not a TypeScript DSL.
-
-1. **Get** — `workspace_get` → use the returned `schema` object as the starting point.
-2. **Edit** — mutate that JSON in memory (add/change/remove types, fields, enums).
-3. **Dry-run** — `workspace_schema_push` with `dryRun: true` (default) and review the planned diff.
-4. **Apply** — same call with `dryRun: false`.
-
-### Critical rules
-
-- **Types omitted from the pushed schema are DELETED.** Always start from `workspace_get` output; never push a partial types array.
-- **Ids:** existing types/fields keep their `id`. New types/fields/enums should omit `id` (server assigns). To **rename**, keep the same `id` and change `name` — matching is by id, not name.
-- **Parents.** `parents.first` / `parents.second` reference a parent table that must exist in `types`. The order of the `types` array doesn't matter — matching is by reference, not position.
-- **Default fields.** Tables already have `id` (`@connector`), `createdAt`, `updatedAt` — do not invent duplicates when editing an existing table; new tables should include the usual connector/`createdAt`/`updatedAt` fields consistent with sibling tables in the same workspace.
-- **Enums** live in `schema.enums` as `{ name, values: string[] }`. Field type for an enum field is the enum **name** (e.g. `"SignalStatus"`).
-
-### Schema JSON shape (essentials)
-
-```json
-{
-  "types": [
-    {
-      "id": "wGluy5",
-      "name": "Signal",
-      "directives": [],
-      "publishingTypes": [],
-      "fields": [
-        { "id": "9U29sX", "name": "id", "type": "ID", "directives": ["@connector"] },
-        { "id": "nOvMag", "name": "message", "type": "String", "directives": [] },
-        { "id": "mkT0Ld", "name": "status", "type": "SignalStatus", "directives": [] }
-      ],
-      "parents": { "first": null, "second": null },
-      "targets": [],
-      "resolvers": []
-    }
-  ],
-  "enums": [
-    { "name": "SignalStatus", "values": ["New", "Acknowledged"] }
-  ],
-  "products": []
-}
-```
-
-Common field `type` values: `String`, `ID`, `Integer`, `Float`, `Boolean`, `Email`, `Json`, `DateTime`, `Date`, `Url`, list variants as used by existing tables in that workspace, plus enum names.
-
-Common field directives: `@connector`, `@sortby`, `@auth`, `@user_email`, `@user_password`, `@dynamic_field`, `@users` (table-level).
-
-Preserve unrelated top-level schema keys returned by `workspace_get` (`products`, auth modes, region, etc.) unless you intentionally change them — push replaces the schema declaration; starting from a full get avoids accidental loss.
-
----
-
-## 6) Generic data tools
-
-Use `data_*` for:
-
-- CRUD on workspace records (`ofType` = `schema.types[].id` from `workspace_get`).
-- Inspecting system CMS entities when you need a single record outside an app manifest.
-- Secrets discovery: `data_list` with `ofType: "secret"` (id + name only; values are never readable).
-
-`file_upload` creates a `filedocument` usable in later `data_*` calls.
-
-For **app structure** (pages, block instances, block-type metadata/copies/`defaultConfig`), prefer `app_get` → edit → `app_push` — see `turbofy-apps`. For **persistent app documentation**, discover metadata in `app_get.documents` and use `app_document_get` / `app_document_put` / `app_document_delete`; there is no `app_document_list`. For **block React sources**, use `block_type_*` — see `turbofy-blocks`. Do not round-trip app CMS entities via `data_*` when a specialized app tool covers the operation.
-
----
-
-## See also
-
-- **`turbofy-apps`** — app manifest, `app_push` reconciliation, localization.
-- **`turbofy-blocks`** — remote `block_type_*` build session + React component rules.
-- **`turbofy-dynamic-fields`** — `$$self` / `$$args` / `$$std`.
-- **`turbofy-flows`** — flow JSON declarations via `flow_upsert`.
-- **`turbofy-chatbot`** — the chatbot recipe: Thread/Message tables + reply flow + chat block. Turbofy has **no chatbot API**; `product_chatbot` is a legacy flag.
+- `turbofy-apps` — pages, app settings, block placement, docs, localization, auth
+- `turbofy-blocks` — React block source and block validation
+- `turbofy-dynamic-fields` — server-side `$$std` data logic
+- `turbofy-flows` — automation declarations and flow runtime
+- `turbofy-chatbot` — Thread/Message + flow + UI recipe

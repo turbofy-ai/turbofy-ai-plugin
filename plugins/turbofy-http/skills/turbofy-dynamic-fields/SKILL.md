@@ -1,16 +1,15 @@
 ---
 name: turbofy-dynamic-fields
 description: "Use when server-side data logic in a Turbofy app is wrong or needs to be written — pre-fetching records, resolving page-specific titles from the URL, wiring translations, resolving links between pages, or debugging why a section shows null/empty data. Triggers: 'load data for this section', 'fetch products server-side', 'show the right title for this URL', 'why is this block empty', 'resolve links between pages', 'get translations for this content', or when editing @dynamic_field / $$std code. Covers the Secure VM runtime, $$self/$$args/$$std, and common data-fetch patterns. For the React UI that displays the data, load turbofy-blocks. For page/section placement, load turbofy-apps."
-disable-model-invocation: false
 ---
 
 # Turbofy Dynamic Fields
 
 Dynamic fields are string (or configured) fields whose contents run as JavaScript in a server-side Secure VM. They compute derived values, fetch related records, resolve localized copies, and resolve page links — without a deployed backend.
 
-Companions: `turbofy-apps` (where these fields live on CMS entities), `turbofy-blocks` (React consumption).
+Companions: `turbofy-apps` (where these fields live in typed app sources), `turbofy-blocks` (React consumption).
 
-**Writing `defaultConfig` / `defaultDynamicData` through MCP:** put the JS on the app manifest (`blockTypes[]` / block instances) and apply with `app_push` (`turbofy-apps`). Prefer unwrapped user JS; the platform applies copies guards.
+Write type-level `defaultConfig` / `defaultDynamicData` in `block-types/<Name>/record.ts`. Write per-instance `config` / `dynamicData` on the relevant `appBuilder.block(...)` in `pages/<pageId>.ts`. Apply with `app_push`. Prefer unwrapped user JS; the builder adds the copies guard.
 
 ## When to load this skill
 
@@ -172,7 +171,7 @@ const all = $$std.listRecords("TABLE_ID", { limit: 100 });
 
 **F) Serializable only** — plain objects/arrays/scalars/null. No functions, Dates, DOM, cycles.
 
-Resolve **table ids** via `workspace_get` → `schema.types[].id` — never table names.
+Resolve **table ids** from `schema.ts` or `table_list` — never table names.
 
 ---
 
@@ -186,6 +185,6 @@ Resolve **table ids** via `workspace_get` → `schema.types[].id` — never tabl
 
 ## See also
 
-- **`turbofy-platform`** — schema JSON (`workspace_get`), CMS ofTypes.
-- **`turbofy-apps`** — where dynamic fields hang on the app manifest; `app_push`; auto-injected `copies`.
+- **`turbofy-platform`** — schema DSL, `table_list`, CMS ofTypes.
+- **`turbofy-apps`** — where dynamic fields live in app source; `app_push`; auto-injected `copies`.
 - **`turbofy-blocks`** — `config.copies` / `dynamicData` vs client hooks.

@@ -4,8 +4,8 @@ This repository is a **plugin marketplace** for AI coding assistants — **Claud
 
 | Plugin | What it is |
 |---|---|
-| **Turbofy** (`turbofy`) | Classic local MCP (`npx @turbofy-ai/mcp`) — pull/push apps and schema to `~/.turbofy`, TypeScript DSL workflows. |
-| **Turbofy HTTP** (`turbofy-http`) | New HTTP MCP — schema/apps/flows as JSON, remote `block_type_*` sessions. No local `~/.turbofy` checkout. |
+| **Turbofy** (`turbofy`) | Local MCP (`npx @turbofy-ai/mcp`) — pull/push apps, flows, and schema in `~/.turbofy` with TypeScript DSL workflows. |
+| **Turbofy HTTP** (`turbofy-http`) | Hosted MCP — the same typed workflows in a persistent remote session tree, edited with `fs_*` tools. |
 
 Install one or both. Their MCP server keys differ (`turbofy` vs `Turbofy`), so they can run in parallel without clobbering each other.
 
@@ -44,7 +44,7 @@ Pick your app below for the exact clicks.
 6. Choose **Add from a repository**.
 7. Click on **Select repository** and paste `https://github.com/turbofy-ai/turbofy-ai-plugin` (or `turbofy-ai/turbofy-ai-plugin@<branch>`) and click **Sync**.
 8. Select **Turbofy** and/or **Turbofy HTTP MCP** and click **Install** (`+` button).
-9. If you installed classic **Turbofy**, run **`/turbofy-setup`** once (see [Fewer permission prompts](#fewer-permission-prompts-claude) below). **Turbofy HTTP** does not need this.
+9. If you installed local **Turbofy**, run **`/turbofy-setup`** once (see [Fewer permission prompts](#fewer-permission-prompts-claude) below). **Turbofy HTTP** does not need this.
 
 That's it — from now on you can just use it.
 
@@ -74,7 +74,7 @@ That's it — from now on you can just use it.
 
 OpenCode doesn't yet support installing this kind of plugin in one click, so you need to add the pieces by hand.
 
-**Classic Turbofy (local MCP)**
+**Turbofy (local MCP)**
 
 ```jsonc
 {
@@ -106,29 +106,29 @@ Copy [`plugins/turbofy/skills/`](plugins/turbofy/skills/) into `.opencode/skills
 }
 ```
 
-Copy [`plugins/turbofy-http/skills/`](plugins/turbofy-http/skills/) into your OpenCode skills directory (use distinct folder names if you also keep the classic skills).
+Copy [`plugins/turbofy-http/skills/`](plugins/turbofy-http/skills/) into your OpenCode skills directory (use distinct folder names if you also keep the local MCP skills).
 
 ---
 
 ## What you get after installing
 
-### Turbofy (classic)
+### Turbofy (local)
 
 - Local MCP via `npx @turbofy-ai/mcp` — pull/push apps and schema under `~/.turbofy`.
 - Skills: **turbofy-platform**, **turbofy-apps**, **turbofy-blocks**, **turbofy-dynamic-fields**, **turbofy-flows**, plus **turbofy-setup** (Claude permissions for `~/.turbofy`).
 
 ### Turbofy HTTP
 
-- HTTP MCP — JSON schema/apps/flows, `app_get` → `app_push`, remote `block_type_*` sessions.
-- Skills under `plugins/turbofy-http/skills/` covering the same areas for the HTTP workflow (no `turbofy-setup`).
+- HTTP MCP — typed schema, app, flow, and block sources in `workspaces/<environment>/<workspaceId>/`.
+- Skills under `plugins/turbofy-http/skills/` covering the hosted pull/edit/push workflow (no `turbofy-setup`).
 
-You don't need to remember skill names — your assistant picks the right one as you work. Prefer **one** plugin’s skill set for a given task so the agent doesn’t mix local-DSL and HTTP-JSON workflows.
+You don't need to remember skill names — your assistant picks the right one as you work. Prefer **one** plugin’s skill set for a given task so the agent uses the correct filesystem: local files for `turbofy`, remote `fs_*` paths for `turbofy-http`.
 
 ---
 
-## Fewer permission prompts (Claude — classic Turbofy only)
+## Fewer permission prompts (Claude — local Turbofy only)
 
-Classic Turbofy keeps pulled workspaces and apps under `~/.turbofy/`. Because that
+Local Turbofy keeps pulled workspaces and apps under `~/.turbofy/`. Because that
 folder lives outside your current project, Claude asks for permission every time
 it reads or edits a file there — which gets noisy fast.
 
@@ -147,7 +147,7 @@ If you'd rather not run it, you can get the same effect by switching the session
 to **Auto accept edits** mode from the selector in the message box — but you'd
 need to do that each session, whereas `/turbofy-setup` is permanent.
 
-> This step is **Claude Code only**, and only needed for classic **Turbofy**.
+> This step is **Claude Code only**, and only needed for local **Turbofy**.
 > **Turbofy HTTP** does not write under `~/.turbofy`.
 
 ---
@@ -155,8 +155,8 @@ need to do that each session, whereas `/turbofy-setup` is permanent.
 ## Troubleshooting
 
 - **No custom icon in Claude Code.** Claude's plugin marketplace does not yet render custom plugin icons — all plugins show the same default placeholder ([anthropics/claude-code#28187](https://github.com/anthropics/claude-code/issues/28187)). The `icon` field is set in `.claude-plugin/` for when support lands.
-- **Tool names.** Classic tools look like `mcp__turbofy__<tool>`; HTTP tools look like `mcp__Turbofy__<tool>` (the HTTP plugin's MCP server key is `Turbofy`). Skills are namespaced per plugin. In Codex address them as `@turbofy` / `@turbofy-http` (plugin `name` must match the directory under `plugins/`).
+- **Tool names.** Local MCP tools look like `mcp__turbofy__<tool>`; HTTP tools look like `mcp__Turbofy__<tool>` (the HTTP plugin's MCP server key is `Turbofy`). Skills are namespaced per plugin. In Codex address them as `@turbofy` / `@turbofy-http` (plugin `name` must match the directory under `plugins/`).
 - **Nothing happened after install.** Restart the app or reload plugins. In Claude Code you can also run `/reload-plugins`.
 - **The assistant doesn't seem to see Turbofy.** Make sure you're signed in, and that the expected MCP appears as connected (in Claude Code, run `/mcp`).
-- **Claude keeps asking permission to touch `~/.turbofy`.** Run `/turbofy-setup` once (classic plugin only).
+- **Claude keeps asking permission to touch `~/.turbofy`.** Run `/turbofy-setup` once (local plugin only).
 - **I want a clean reinstall.** Remove the plugin(s) from the plugin menu, then add the marketplace again and reinstall.
