@@ -1,7 +1,7 @@
 {
   "name": "turbofy-http",
   "displayName": "Turbofy HTTP MCP",
-  "version": "0.0.14",
+  "version": "0.0.15",
   "description": "Turbofy HTTP MCP plus guidance skills for typed workspace, app, flow, and block sources in a persistent remote session tree.",
   "author": {
     "name": "Turbofy",

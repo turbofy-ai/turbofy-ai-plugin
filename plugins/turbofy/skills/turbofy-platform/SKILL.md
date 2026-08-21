@@ -217,13 +217,40 @@ Scalar: `string()`, `integer()`, `float()`, `boolean()`, `id()`, `email()`, `pho
 
 List: `listString()`, `listInteger()`, `listFloat()`, `listBoolean()`, `listId()`
 
-Special: `enum(enumDeclaration)`, `dynamicField()`
+Special: `enum(enumDeclaration)`, `dynamicField()`, `localizedString({ locales })`
 
 All field methods accept optional opts:
 
 ```ts
 builder.fields.string({ label: "Full Name", directives: ["@auth"] });
 ```
+
+### Searchable tables
+
+Add `"@fts_searchable"` to a table's `directives` to index it for `$$std.queryRecords` / `$$std.searchRecords` (see `turbofy-dynamic-fields`) and the REST `query`/`search` routes. Optional `searchConfig` tunes indexing per field:
+
+```ts
+const PartTable = builder.table(
+  "Part",
+  {
+    name: builder.fields.string(),
+    attributes: builder.fields.json(),
+    title: builder.fields.localizedString({ locales: ["en", "de"] }),
+  },
+  {
+    directives: ["@fts_searchable"],
+    searchConfig: {
+      fields: {
+        attributes: { indexKeys: true, keyTypes: { voltage: "number" } },
+      },
+    },
+  },
+);
+```
+
+- Json fields with `indexKeys: true` become filterable by dotted key paths (`attributes.voltage`); `keyTypes` pins a key's value type (`"text" | "number" | "boolean"`).
+- Localized string fields index every declared locale under `field.<locale>` — filterable and full-text searchable per language.
+- Creating, updating, or deleting a record in a searchable table costs 5 credits instead of 1.
 
 ### Parent-child relationships
 
