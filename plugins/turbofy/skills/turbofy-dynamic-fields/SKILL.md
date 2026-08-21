@@ -59,7 +59,7 @@ const product = $$std.getRecord("tbl_abc", productId, { dynamicArgs: $$args });
 
 ### `$$std.listRecords(tableId, options?, withToken?)`
 
-Fetches a page of records from a collection. **Does not accept `filter`** — filter client-side on the returned items.
+Fetches a page of records from a collection. **Does not accept `filter`** — filter client-side on the returned items, or use `$$std.queryRecords` when the table is searchable.
 
 | Option        | Type            | Description                                                                                                          |
 | ------------- | --------------- | -------------------------------------------------------------------------------------------------------------------- |
@@ -120,6 +120,42 @@ Fetches a page of records filtered by parent relationship.
 
 ```js
 const blocks = $$std.listRecordsByParent("tbl_block", "tbl_page", pageId);
+```
+
+### `$$std.queryRecords(tableId, input?)`
+
+Server-side filtering, sorting, and pagination over the workspace's query index. Works only on tables carrying the `@fts_searchable` directive; on a table or stack without the index the result carries an `error` marker instead of throwing — check it and fall back to `listRecords`.
+
+- **returns**: `{ items, total, error? }`
+- **input**: `where`, `orderBy`, `order` (`ASC`|`DESC`), `limit`, `offset`
+
+`where` maps field → `{ operator: value }` with operators `eq`, `ne`, `lt`, `le`, `gt`, `ge`, `contains`, `beginsWith`, `in`, `isNull`. Queryable fields: any scalar column, dotted Json key paths (`attributes.voltage`) when the field's search config sets `indexKeys`, and per-locale localized paths (`title.en`).
+
+```js
+const res = $$std.queryRecords("tbl_abc", {
+  where: { "attributes.voltage": { ge: 100 }, inStock: { eq: true } },
+  orderBy: "price",
+  order: "ASC",
+  limit: 10,
+});
+if (res.error) return null;
+({ products: res.items, total: res.total });
+```
+
+### `$$std.searchRecords(tableId, query, fields, options?)`
+
+Full-text search over the same index: prefix terms, relevance-ranked. `fields` scopes the match — text columns match their words, Json fields their string leaves. For a localized string field, its plain name searches the field's **first declared locale**; pass an explicit `name.<locale>` (e.g. `` `title.${$$args.lang}` ``) to search another language — a search never matches across languages. Same `@fts_searchable` requirement and `error` marker as `queryRecords`.
+
+- **returns**: `{ items, total, error? }`
+- **options**: `{ limit }`
+
+```js
+const lang = $$std.getDynamicArg("lang", "en");
+const res = $$std.searchRecords("tbl_abc", $$args.searchParams.q, [
+  `title.${lang}`,
+  "attributes",
+]);
+({ results: res.items, total: res.total });
 ```
 
 ### `$$std.batchGetRecords(tableId, recordIds, options?)`
