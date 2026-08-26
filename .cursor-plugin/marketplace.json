@@ -5,29 +5,9 @@
     "email": "hello@turbofy.com"
   },
   "metadata": {
-    "description": "Turbofy AI toolkit plugins for Cursor — local and hosted MCP variants, plus skills for building apps, block types, flows, and data models."
+    "description": "Turbofy AI toolkit plugin for Cursor — hosted MCP plus skills for building apps, block types, flows, and data models."
   },
   "plugins": [
-    {
-      "name": "turbofy-plugin",
-      "displayName": "Turbofy",
-      "source": "./plugins/turbofy",
-      "description": "Turbofy MCP integration (local @turbofy-ai/mcp) plus guidance skills for building apps, block types, and dynamic fields.",
-      "version": "0.0.15",
-      "author": {
-        "name": "Turbofy",
-        "email": "hello@turbofy.com"
-      },
-      "license": "MIT",
-      "homepage": "https://github.com/turbofy-ai/turbofy-ai-plugin",
-      "keywords": [
-        "turbofy",
-        "mcp",
-        "apps",
-        "cms",
-        "blocks"
-      ]
-    },
     {
       "name": "turbofy-http",
       "displayName": "Turbofy HTTP",
