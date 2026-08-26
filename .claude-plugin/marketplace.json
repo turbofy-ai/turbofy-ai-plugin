@@ -8,7 +8,7 @@
   "plugins": [
     {
       "name": "turbofy-http",
-      "displayName": "Turbofy HTTP MCP",
+      "displayName": "Turbofy",
       "source": "./plugins/turbofy-http",
       "description": "Turbofy HTTP MCP plus guidance skills for typed workspace, app, flow, and block sources in a persistent remote session tree."
     }

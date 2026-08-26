@@ -1,6 +1,6 @@
 # Turbofy Plugin Marketplace
 
-This repository is a **plugin marketplace** for AI coding assistants — **Claude Code**, **Codex**, **Cursor**, or **OpenCode**. It ships the **Turbofy HTTP** (`turbofy-http`) plugin: a hosted MCP with typed schema, app, flow, and block workflows in a persistent remote session tree, edited with `fs_*` tools.
+This repository is a **plugin marketplace** for AI coding assistants — **Claude Code**, **Codex**, **Cursor**, or **OpenCode**. It ships the **Turbofy** (`turbofy-http`) plugin: a hosted MCP with typed schema, app, flow, and block workflows in a persistent remote session tree, edited with `fs_*` tools.
 
 ---
 
@@ -9,7 +9,7 @@ This repository is a **plugin marketplace** for AI coding assistants — **Claud
 For **Claude Code**, **Codex**, and **Cursor**, the installation is the same two-step process:
 
 1. Add this GitHub repository as a **plugin marketplace**.
-2. Pick **Turbofy HTTP** from that marketplace and install.
+2. Pick **Turbofy** from that marketplace and install.
 
 The repository URL is the same in all three apps:
 
@@ -36,7 +36,7 @@ Pick your app below for the exact clicks.
 5. Choose **Create Plugin** → **Add marketplace**.
 6. Choose **Add from a repository**.
 7. Click on **Select repository** and paste `https://github.com/turbofy-ai/turbofy-ai-plugin` (or `turbofy-ai/turbofy-ai-plugin@<branch>`) and click **Sync**.
-8. Select **Turbofy HTTP MCP** and click **Install** (`+` button).
+8. Select **Turbofy** and click **Install** (`+` button).
 
 That's it — from now on you can just use it.
 
@@ -49,7 +49,7 @@ That's it — from now on you can just use it.
 5. Paste `https://github.com/turbofy-ai/turbofy-ai-plugin` as the source.
 6. Click **Save**.
 7. Click **Built by OpenAI** next to the plugin search input again.
-8. Select **Turbofy HTTP**.
+8. Select **Turbofy**.
 9. Click the **+** button next to the plugin in the search results, then **Install**.
 10. In a chat window, click the **+** button → **Plugins** → the plugin name, or type `@turbofy-http`.
 11. The first time you use it, a browser window opens to authenticate with your Turbofy credentials.
@@ -60,7 +60,7 @@ That's it — from now on you can just use it.
 1. Open Cursor and switch to the **Agent window** mode.
 2. Go to **Settings** → **Plugins**.
 3. Paste `https://github.com/turbofy-ai/turbofy-ai-plugin` into the **Search or Paste Link** input.
-4. Select **Turbofy HTTP** from the results to install.
+4. Select **Turbofy** from the results to install.
 
 ### OpenCode
 
