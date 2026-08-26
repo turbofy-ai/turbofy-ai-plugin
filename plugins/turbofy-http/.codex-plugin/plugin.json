@@ -19,9 +19,9 @@
   "agents": "./agents/",
   "mcpServers": "./.mcp.json",
   "interface": {
-    "displayName": "Turbofy HTTP",
-    "shortDescription": "Turbofy HTTP MCP and app-building skills.",
-    "longDescription": "Adds the Turbofy HTTP MCP plus skills for typed workspace, app, flow, and block sources, dynamic fields, and platform workflows.",
+    "displayName": "Turbofy",
+    "shortDescription": "Turbofy MCP and app-building skills.",
+    "longDescription": "Adds the Turbofy MCP plus skills for typed workspace, app, flow, and block sources, dynamic fields, and platform workflows.",
     "developerName": "GraphApi.io GmbH",
     "category": "Developer Tools",
     "capabilities": [

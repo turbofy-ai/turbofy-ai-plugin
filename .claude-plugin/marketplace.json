@@ -1,20 +1,14 @@
 {
   "name": "turbofy",
-  "description": "Turbofy plugin marketplace — local and HTTP MCP variants, with skills for building apps, block types, flows, and data models.",
+  "description": "Turbofy plugin marketplace — HTTP MCP plus skills for building apps, block types, flows, and data models.",
   "owner": {
     "name": "Turbofy",
     "email": "hello@turbofy.com"
   },
   "plugins": [
     {
-      "name": "turbofy",
-      "displayName": "Turbofy MCP",
-      "source": "./plugins/turbofy",
-      "description": "Turbofy MCP integration (local @turbofy-ai/mcp) plus guidance skills for building apps, block types, and dynamic fields."
-    },
-    {
       "name": "turbofy-http",
-      "displayName": "Turbofy HTTP MCP",
+      "displayName": "Turbofy",
       "source": "./plugins/turbofy-http",
       "description": "Turbofy HTTP MCP plus guidance skills for typed workspace, app, flow, and block sources in a persistent remote session tree."
     }
