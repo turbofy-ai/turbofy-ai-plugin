@@ -1,6 +1,6 @@
 ---
 name: turbofy-chatbot
-description: "Use when building a chatbot, AI assistant, support chat, or other conversational feature in a Turbofy app. A chatbot is composed from Thread/Message tables, a flow triggered by Message INSERT that calls genericAI, and a React chat block; there is no separate chatbot API. Covers the typed schema and flow sources, streaming replies, WebSocket delivery, and UI contract."
+description: "Build a Turbofy chatbot using Thread/Message tables, a reply flow, and a React chat block. Covers streaming replies, conversation ownership, and live updates through the hosted MCP."
 ---
 
 # Turbofy Chatbot
@@ -15,7 +15,7 @@ Turbofy chat is assembled from ordinary platform primitives:
 
 There is no chat endpoint or chatbot SDK. Sending means creating a Message record; receiving means observing the assistant record written by the flow.
 
-## Architecture
+## Message flow
 
 ```text
 Chat block                  Workspace data                    Flow
@@ -127,7 +127,7 @@ The trigger condition is mandatory: the flow writes to the table that triggers i
 
 Stream chunks contain the accumulated reply, not deltas. The update step overwrites `content` and marks the final result complete. Store provider keys as workspace secrets and reference their record ids with `flowBuilder.secret(...)`.
 
-The trigger payload includes `pbac0sub` from the user message. Forward it as `dynamicArgs.ownerSub` when creating the assistant draft so the reply belongs to the same end user. Without this, the elevated flow write has no end-user owner, and PBAC prevents the client from listing the reply or receiving its WebSocket events.
+The trigger payload includes `pbac0sub` from the user message. Forward it as `dynamicArgs.ownerSub` when creating the assistant draft so the reply belongs to the same end user. This gives the reply the same owner as the incoming message, so the user can read it and receive its updates.
 
 ## Chat block
 
@@ -158,9 +158,9 @@ useWsSubscription(
 );
 ```
 
-Sort messages chronologically for display. Show a typing indicator after the user message and while the assistant draft has `isComplete === false`. For smooth rendering, animate visible text toward the latest accumulated server value rather than replaying completed messages.
+Sort messages chronologically for display. Show a typing indicator after the user message and while the assistant draft has `isComplete === false`. If animating streamed text, honor reduced-motion preferences and avoid replaying completed messages.
 
-WebSocket delivery requires an authenticated user. Place the chat on a protected page and configure read access so each user can observe only their own Thread/Message records. Public pages can write and receive server replies in storage, but will not receive authenticated WebSocket events.
+WebSocket delivery requires an authenticated user. Place the chat on a protected page and configure read access so each user can observe only their own Thread/Message records. Signed-out visitors do not receive WebSocket updates; page visibility alone does not determine a visitor’s session.
 
 ## Checklist
 

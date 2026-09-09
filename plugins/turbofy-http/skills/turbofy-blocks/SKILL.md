@@ -1,6 +1,6 @@
 ---
 name: turbofy-blocks
-description: "Use when building or styling a Turbofy UI block such as navigation, hero, product grid, search, form, footer, card, filter, or interactive section, or when editing block-types/* runtime source. Covers the hosted app tree, block_type_open/block_type_check, React props, copies, navigation, data hooks, and UI/accessibility rules. For placement and record.ts metadata load turbofy-apps; for server data logic load turbofy-dynamic-fields."
+description: "Build or style Turbofy React blocks, shared utilities and state, client data interactions, or custom authentication and social-login UI. Uses hosted app sources and block validation. For page placement use turbofy-apps; for server data logic use turbofy-dynamic-fields."
 ---
 
 # Turbofy Blocks
@@ -16,7 +16,7 @@ For app-wide work:
 3. Run `block_type_check` for each changed sourced block.
 4. `app_push` dry-runs, then compiles and publishes changed block sources together with app declarations when called with `dryRun: false`.
 
-For an isolated existing block, `block_type_open` can stage just that block before the same `fs_*` and `block_type_check` loop. It may start dependency installation asynchronously; wait for the returned setup state before checking.
+For app-scoped shared modules, use the full `app_pull` tree. For an isolated existing block without shared-module dependencies, `block_type_open` can stage just that block before the same `fs_*` and `block_type_check` loop. It may start dependency installation asynchronously; wait for the returned setup state before checking.
 
 ```text
 block-types/<Name>/
@@ -29,15 +29,17 @@ block-types/<Name>/
 Rules:
 
 - Do not import `record.ts` from runtime source.
-- Runtime files may import siblings, but never another block type or app files outside their boundary.
+- Runtime files may import siblings, platform modules, installed dependencies, and `@/shared/<Name>` exports. Do not import another block type or unrelated app declarations. See [shared utilities and state](references/shared-modules.md) for reusable code and Zustand stores.
 - Supported runtime sources are `.ts`, `.tsx`, `.js`, `.jsx`, `.css`, and `.json`.
 - A block type without `index.tsx`/`index.ts` is valid and sourceless.
-- Add custom dependencies to the app's user-owned `package.json`; pulls preserve it.
+- Add custom dependencies to the app's user-owned `package.json`; pulls preserve it. Install them in the app project with `fs_exec` and wait for completion before validation.
 - Never edit `.base/` or `app.base.json`.
 
 ## Runtime props
 
 ```ts
+import type { PropsWithChildren } from "react";
+
 export type IBuildingBlockProps<TConfig = unknown> = PropsWithChildren<{
   blockId: string;
   locale: string;
@@ -87,7 +89,7 @@ Use `turbofy-dynamic-fields` for `$$self`, `$$args`, and `$$std` syntax.
 
 ## Data access
 
-Use table ids from `schema.ts`/`table_list`, never display names.
+Import client data helpers from `@/api`. Use table ids from `schema.ts`/`table_list`, never display names. Read [client data helper signatures](references/client-data.md) when implementing reads, mutations, search, uploads, or subscriptions.
 
 | Surface | Use |
 |---|---|
@@ -95,7 +97,7 @@ Use table ids from `schema.ts`/`table_list`, never display names.
 | `defaultDynamicData` | SSR first paint based on route/search params |
 | `useTypeQuery`, `useListTypes`, `useListTypesByParent` | Client reads and interaction |
 | mutation hooks | Client creates, updates, and deletes |
-| `useSearchTypes` | Full-text search when workspace search is enabled |
+| `useQueryTypes`, `useSearchTypes` | Structured filtering and full-text search on searchable tables |
 | `useLinks`, `useTranslations`, `useFileDocuments` | Client-side resolution after a fetch |
 | `useUploadFile` | Browser uploads |
 | `useWsSubscription` | Server-side record changes delivered to authenticated clients |
@@ -108,6 +110,10 @@ For SPA dashboards, prefer client hooks and use config only for copies/links. Fo
 - Resolve localized links with client `useLinks` or server `$$std.batchLink`; do not concatenate locale paths.
 - Query-only navigation such as `navigate("?q=shoes", { shallow: true, replace: true })` keeps the current pathname and avoids full rerenders.
 - Do not read or write `window.location` directly.
+
+## Authentication
+
+Use `@/lib/auth` for app sessions, including `useCurrentUser`, password forms, recovery, and `signInWithSocialProvider`. Read [auth helper usage](references/auth.md) for signatures, result handling, and preview/published callbacks. Configure access and provider prerequisites with `turbofy-apps`.
 
 ## UI requirements
 
@@ -127,7 +133,8 @@ For SPA dashboards, prefer client hooks and use config only for copies/links. Fo
 3. Copy keys exist for every locale.
 4. Data calls use table ids and handle loading/empty/error states.
 5. Navigation uses Turbofy helpers.
-6. `block_type_check` passes before `app_push`.
+6. `block_type_check` passes before `app_push`; inspect block and shared-module failures in both dry-run and apply results.
+7. Verify related blocks together when they consume shared state, and test the auth flow in the intended preview or published environment.
 
 ## See also
 
