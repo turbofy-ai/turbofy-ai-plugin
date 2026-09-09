@@ -1,11 +1,11 @@
 ---
 name: turbofy-flows
-description: "Use when building or modifying Turbofy automations: initializing or pulling flows, editing flow.ts with flowBuilder, validating triggers/steps/dynamic params/secrets, pushing with a dry run, or deleting a flow. Covers flow_init/flow_pull/flow_push/flow_delete and the hosted flows session tree. For workspace schema load turbofy-platform."
+description: "Create or edit Turbofy automation flows, triggers, schedules, dynamic step parameters, and secret references through the hosted MCP. Validate and push flow.ts using flowBuilder. For database schemas use turbofy-platform."
 ---
 
 # Turbofy Flows
 
-A flow is a set of triggers and a linked list of server-side steps. Edit it as typed `flowBuilder` source in the hosted MCP session tree.
+A flow runs an ordered sequence of steps when a trigger matches. Edit it as typed `flowBuilder` source in the hosted MCP session tree.
 
 ## Workflow
 
@@ -40,7 +40,7 @@ Push validates the edited flow against all remote flows and verifies referenced 
 
 - A matching trigger seeds a `state` output map under the trigger key.
 - Each step reads `state`, runs, stores its result under its step name, then advances.
-- Steps form a linked list. Array order supplies the default `next`; `next` may override it.
+- Steps run in array order unless `next` chooses a later step. Do not point back to an earlier step.
 - `skipIf` skips one step and continues. `continueIf` stops the flow when falsy.
 - `debug: true` adds verbose logs; `disabled: true` prevents execution.
 
@@ -105,9 +105,9 @@ everyTenMinutes: flowBuilder.trigger.schedule({
 }),
 ```
 
-Use exactly one of `cron` or `rate`. Turbofy uses AWS six-field cron: minutes, hours, day-of-month, month, day-of-week, year. `timezone` applies only to cron. Optional `startDate` and `endDate` accept ISO dates/datetimes.
+Use exactly one of `cron` or `rate`. Turbofy uses six-field cron: minutes, hours, day-of-month, month, day-of-week, year. `timezone` applies only to cron. Optional `startDate` and `endDate` accept ISO dates/datetimes.
 
-Schedules reconcile automatically on push and are disabled or removed with their flow/trigger lifecycle.
+Schedules update automatically on push. Disabling a flow disables its schedules; removing a trigger removes its schedule. Advanced cron expressions can run even when the visual editor displays them as read-only. Exactly one of day-of-month/day-of-week must be `?` when the other is specified; use `rate` for simple intervals.
 
 ## Dynamic params and secrets
 
@@ -142,11 +142,11 @@ Errors block push:
 - missing or cyclic `next` targets
 - a table write that unconditionally retriggers the same flow
 - cross-flow write/trigger cycles
-- invalid step params, credentials, or secret ids
+- invalid credentials or secret ids
 
 A self-retrigger with a condition becomes a warning because the validator cannot prove the condition terminates. Ensure the condition excludes records written by the flow, for example a Message INSERT flow that only accepts `role === 'user'` and writes `role: 'assistant'`.
 
-Dynamic `ofType` values and cloud functions limit static recursion analysis; review those paths manually.
+Also review warnings about step parameter shapes, dynamic table ids, and cloud-function writes. Passing validation does not prove those paths are correct.
 
 ## See also
 

@@ -34,6 +34,10 @@ Build or modify exactly one block type. Stay inside the assigned block directory
 - Do not import `record.ts` from runtime source or import another block type.
 - Use table ids, not table names, in `$$std` calls and client data hooks.
 
+## Shared code
+
+Reuse existing `@/shared/<Name>` exports when several blocks need the same utility or state. Coordinate changes to `shared/` and `package.json` with their assigned owner; do not duplicate a shared store inside each block.
+
 ## Return
 
 - Block name/id and files changed

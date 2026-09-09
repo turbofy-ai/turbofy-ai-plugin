@@ -1,6 +1,6 @@
 ---
 name: turbofy-platform
-description: "Use first for Turbofy work, especially organization/workspace discovery, database schema changes, record CRUD, file uploads, or choosing the right follow-on skill. Covers the hosted MCP session tree, workspace_pull → fs_* edit → workspace_push, the schema DSL, data tools, and file_upload/file_upload_intent. For app structure or UI load turbofy-apps or turbofy-blocks."
+description: "Discover Turbofy organizations and workspaces, edit database schemas, manage records, and upload files through the hosted MCP. Also use for platform orientation and selecting an app, block, or flow skill."
 ---
 
 # Turbofy Platform
@@ -9,8 +9,8 @@ Turbofy combines a typed data platform, app builder, automation flows, and a Rea
 
 ## Start here
 
-1. `list_organizations`
-2. `list_workspaces` with the selected `orgId`
+1. Reuse known organization/workspace ids from the user or current task. Otherwise call `list_organizations`.
+2. Call `list_workspaces` with the selected `orgId` when the workspace is unknown.
 3. Keep `orgId` and `workspaceId` on every scoped call.
 4. Use `table_list` for a quick schema/table overview, or pull the workspace when editing schema.
 
@@ -58,7 +58,7 @@ Use `dryRun: true` before mutating pushes. It is the default for `workspace_push
 
 1. `workspace_pull` materializes `schema.ts` plus the merge baseline.
 2. Read and edit `schema.ts` through `fs_*`.
-3. `workspace_push` compiles, validates, and computes a three-way merge. Review the dry run.
+3. `workspace_push` validates and previews schema changes. Review the dry run.
 4. Repeat with `dryRun: false` to apply.
 
 If remote and session edits overlap, push reports conflicts and applies nothing. Pull the current remote version and reapply the intended changes.
@@ -127,8 +127,6 @@ const PartTable = builder.table(
   (`"text" | "number" | "boolean"`).
 - Localized string fields index every declared locale under
   `field.<locale>` — filterable and full-text searchable per language.
-- Creating, updating, or deleting a record in a searchable table costs 5
-  credits instead of 1.
 
 Rules:
 
@@ -149,6 +147,7 @@ Common system `ofType` values:
 | Page | `cmspage` |
 | Building block type | `cmsbuildingblocktype` |
 | Building block | `cmsbuildingblock` |
+| Shared module | `cmssharedmodule` |
 | Localization | `cmslocalization` |
 | File document | `filedocument` |
 | Slug mapping | `slugmapping` |
