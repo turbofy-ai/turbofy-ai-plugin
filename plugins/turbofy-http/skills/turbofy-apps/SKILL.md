@@ -85,6 +85,12 @@ export const dashboard = appBuilder.page({
 - For localized slugs, use `slug: { en: "products", de: "produkte" }`. A nested page uses `parent`; a dynamic page uses `slug: "[product]"` and `param: { collection: ProductTable, slugField: "slug" }`. Use the actual schema table declaration and an existing slug field.
 - Page visibility is `public` (default), `guest`, `authenticated`, `group`, or `user`. Private modes require a signed-in app user; user/group data permissions are configured separately.
 
+## Private dynamic pages
+
+Pages with `visibility: "authenticated"`, `"group"`, or `"user"` do not provide SSR-resolved route record IDs or automatically redirect to a 404 for a missing entity. Use `useParams()` from `@/navigation` in the block, handle `isLoading`, `error`, and `notFound`, then fetch the record using the resolved ID. Render a localized unavailable state or navigate to the app's chosen fallback on the client.
+
+Public dynamic pages retain server entity validation. Page access and record permissions still apply to private pages. Read [navigation hooks and the private-page example](../turbofy-blocks/references/navigation.md) when implementing dynamic page content.
+
 ## Block-type records and source
 
 `block-types/<Name>/record.ts` defines app-owned metadata:

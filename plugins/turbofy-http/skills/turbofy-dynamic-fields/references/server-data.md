@@ -144,5 +144,5 @@ A single-page variant `$$std.link(pageId, params?)` also exists; prefer `batchLi
 | `lang` | Language for CMS helpers |
 | `cmsOfTypes` | `{ page?, localization?, image? }` type ids — use `"cmspage"`, `"cmslocalization"`, `"filedocument"` (or image id used by the workspace) |
 | `slug` | Path segments after lang |
-| `params` | Resolved entity ids from `paramsCollectionMap` |
+| `params` | Route parameters. Public dynamic-page SSR can supply resolved record IDs; private-page SSR supplies raw URL values. Use client `useParams()` for resolved IDs on private pages. |
 | `searchParams` | Query string map |
