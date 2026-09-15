@@ -67,9 +67,17 @@ interface IConfig {
   copies?: { title?: string; empty?: string };
 }
 
-export const BuildingBlock = ({ config, dynamicData }: IBuildingBlockProps<IConfig>) => {
-  if (dynamicData === undefined) return <div className="h-32 animate-pulse rounded-xl bg-muted" />;
-  return <section><h2>{config.copies?.title}</h2></section>;
+export const BuildingBlock = ({
+  config,
+  dynamicData,
+}: IBuildingBlockProps<IConfig>) => {
+  if (dynamicData === undefined)
+    return <div className="h-32 animate-pulse rounded-xl bg-muted" />;
+  return (
+    <section>
+      <h2>{config.copies?.title}</h2>
+    </section>
+  );
 };
 ```
 
@@ -91,24 +99,47 @@ Use `turbofy-dynamic-fields` for `$$self`, `$$args`, and `$$std` syntax.
 
 Import client data helpers from `@/api`. Use table ids from `schema.ts`/`table_list`, never display names. Read [client data helper signatures](references/client-data.md) when implementing reads, mutations, search, uploads, or subscriptions.
 
-| Surface | Use |
-|---|---|
-| `defaultConfig` | Copies, static links, stable layout settings |
-| `defaultDynamicData` | SSR first paint based on route/search params |
-| `useTypeQuery`, `useListTypes`, `useListTypesByParent` | Client reads and interaction |
-| mutation hooks | Client creates, updates, and deletes |
-| `useQueryTypes`, `useSearchTypes` | Structured filtering and full-text search on searchable tables |
-| `useLinks`, `useTranslations`, `useFileDocuments` | Client-side resolution after a fetch |
-| `useUploadFile` | Browser uploads |
-| `useWsSubscription` | Server-side record changes delivered to authenticated clients |
+| Surface                                                | Use                                                            |
+| ------------------------------------------------------ | -------------------------------------------------------------- |
+| `defaultConfig`                                        | Copies, static links, stable layout settings                   |
+| `defaultDynamicData`                                   | SSR first paint based on route/search params                   |
+| `useTypeQuery`, `useListTypes`, `useListTypesByParent` | Client reads and interaction                                   |
+| mutation hooks                                         | Client creates, updates, and deletes                           |
+| `useQueryTypes`, `useSearchTypes`                      | Structured filtering and full-text search on searchable tables |
+| `useLinks`, `useTranslations`, `useFileDocuments`      | Client-side resolution after a fetch                           |
+| `useUploadFile`                                        | Browser uploads                                                |
+| `useWsSubscription`                                    | Server-side record changes delivered to authenticated clients  |
 
 For SPA dashboards, prefer client hooks and use config only for copies/links. For SSR sites, use `dynamicData` for the first render and hooks for subsequent filtering, pagination, or mutation.
 
-## Navigation
+## Navigation — mandatory
 
-- Import `Link`, `navigate`, and `useSearchParams` from `@/navigation`.
-- Resolve localized links with client `useLinks` or server `$$std.batchLink`; do not concatenate locale paths.
-- Query-only navigation such as `navigate("?q=shoes", { shallow: true, replace: true })` keeps the current pathname and avoids full rerenders.
+- ALL navigation between pages in the same app MUST use `Link` or
+  `navigate` imported from `@/navigation`.
+- NEVER author an HTML `<a>` element for an internal app destination.
+  `<a>` is permitted ONLY for external links.
+- A destination is internal if it points to a page in this app, whether
+  expressed as a relative path, an absolute URL, a localized URL, or a
+  URL returned by `useLinks` or `$$std.batchLink`. An absolute URL does
+  not make an app page external.
+- Use `Link` for clickable internal links, including menus, breadcrumbs,
+  cards, logos, and buttons styled as links. Use `navigate` for
+  programmatic navigation from event handlers or effects.
+- This rule also applies to shared components and UI primitives:
+  do not bypass it with a component that renders a raw anchor.
+  When using an `asChild` composition for internal navigation, supply
+  `Link` as the child.
+- Resolving a URL does not perform navigation. Pass internal URLs
+  resolved by `useLinks` or `$$std.batchLink` to `Link` or `navigate`,
+  NEVER to `<a href={...}>`.
+- Resolve localized links with client `useLinks` or server
+  `$$std.batchLink`; do not concatenate locale paths.
+- Import route hooks `useParams` and `useSearchParams` from
+  `@/navigation`; see [navigation hooks](#navigation-hooks).
+- Query-only navigation such as
+  `navigate("?q=shoes", { shallow: true, replace: true })`
+  keeps the current pathname. Do not use `shallow: true` when
+  navigating to a different page or dynamic entity.
 - Do not read or write `window.location` directly.
 
 ## Authentication
@@ -131,8 +162,13 @@ Use `@/lib/auth` for app sessions, including `useCurrentUser`, password forms, r
 1. `BuildingBlock` is a named export.
 2. TypeScript and imports are clean.
 3. Copy keys exist for every locale.
-4. Data calls use table ids and handle loading/empty/error states.
-5. Navigation uses Turbofy helpers.
+4. Data calls use table ids and handle loading/empty/error states. For private dynamic pages, also verify a valid entity, a missing entity, resolution errors, and navigation between entities.
+5. Inspect navigation in changed blocks and shared components before
+   publishing. Every internal destination MUST use `Link` or `navigate`
+   from `@/navigation`. Inspect every authored `<a>` and every component
+   that renders an anchor: each must point to an explicitly external
+   destination. Trace variable URLs to their source; do not assume they
+   are external. Fix violations before running `app_push`.
 6. `block_type_check` passes before `app_push`; inspect block and shared-module failures in both dry-run and apply results.
 7. Verify related blocks together when they consume shared state, and test the auth flow in the intended preview or published environment.
 

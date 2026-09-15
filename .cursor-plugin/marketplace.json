@@ -12,22 +12,15 @@
       "name": "turbofy-http",
       "displayName": "Turbofy",
       "source": "./plugins/turbofy-http",
-      "description": "Turbofy HTTP MCP plus guidance skills for typed workspace, app, flow, and block sources in a persistent remote session tree.",
-      "version": "0.0.16",
+      "description": "Turbofy MCP plus guidance skills for typed workspace, app, flow, and block sources in a persistent remote session tree.",
+      "version": "0.0.17",
       "author": {
         "name": "Turbofy",
         "email": "hello@turbofy.com"
       },
       "license": "MIT",
       "homepage": "https://github.com/turbofy-ai/turbofy-ai-plugin",
-      "keywords": [
-        "turbofy",
-        "mcp",
-        "apps",
-        "cms",
-        "blocks",
-        "http"
-      ]
+      "keywords": ["turbofy", "mcp", "apps", "cms", "blocks", "http"]
     }
   ]
 }
