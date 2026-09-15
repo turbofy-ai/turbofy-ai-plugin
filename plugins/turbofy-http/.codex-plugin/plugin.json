@@ -1,20 +1,13 @@
 {
   "name": "turbofy-http",
-  "version": "0.0.16",
-  "description": "Turbofy HTTP MCP plus guidance skills for typed workspace, app, flow, and block sources in a persistent remote session tree.",
+  "version": "0.0.17",
+  "description": "Turbofy MCP plus guidance skills for typed workspace, app, flow, and block sources in a persistent remote session tree.",
   "author": {
     "name": "Turbofy",
     "email": "hello@turbofy.com"
   },
   "license": "MIT",
-  "keywords": [
-    "turbofy",
-    "mcp",
-    "apps",
-    "cms",
-    "blocks",
-    "http"
-  ],
+  "keywords": ["turbofy", "mcp", "apps", "cms", "blocks", "http"],
   "skills": "./skills/",
   "agents": "./agents/",
   "mcpServers": "./.mcp.json",
@@ -24,10 +17,7 @@
     "longDescription": "Adds the Turbofy MCP plus skills for typed workspace, app, flow, and block sources, dynamic fields, and platform workflows.",
     "developerName": "GraphApi.io GmbH",
     "category": "Developer Tools",
-    "capabilities": [
-      "MCP",
-      "Skills"
-    ],
+    "capabilities": ["MCP", "Skills"],
     "defaultPrompt": [
       "Help me build a Turbofy app.",
       "Add a new page to my Turbofy app.",
