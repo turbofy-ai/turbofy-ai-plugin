@@ -133,7 +133,81 @@ Every factory follows `flowBuilder.step.<type>(name, { params, description?, nex
 
 The result of each step is stored at `state.<stepName>`. Consult the scaffold typings and validation errors for the exact parameter shape of the selected step.
 
-`genericAI` operations include `generateText`, `generateObject`, `streamText`, and `embed`. With `streamText`, downstream steps run for published stream chunks and the final result; each chunk contains the accumulated text. This is useful for updating one draft record throughout generation.
+`genericAI` operations include `generateText`, `generateObject`, `streamText`, `embed`, and `generateImage`. With `streamText`, downstream steps run for published stream chunks and the final result; each chunk contains the accumulated text. This is useful for updating one draft record throughout generation.
+
+## Image generation and editing
+
+Use `genericAI` with `operation: "generateImage"`. Prefer it over the legacy `openAIImageGeneration` step, which only supports DALL-E.
+
+```ts
+flowBuilder.step.genericAI("heroImage", {
+  params: {
+    operation: "generateImage",
+    apiKey: flowBuilder.secret("<secret-record-id>"),
+    model: { provider: "openai", model: "gpt-image-2.5-flare" },
+    prompt: flowBuilder.js("`Product photo of ${state.onProductCreated.name} on white`"),
+    size: "1024x1024",
+    outputFilename: flowBuilder.js("`${state.onProductCreated.id}-hero.png`"),
+  },
+}),
+flowBuilder.step.updateType("saveImage", {
+  params: {
+    ofType: "<product-table-id>",
+    id: flowBuilder.js("state.onProductCreated.id"),
+    fields: flowBuilder.js("({ imageUrl: state.heroImage.value.images[0].url })"),
+  },
+}),
+```
+
+Providers and representative models (`model` accepts any id the provider serves):
+
+| Provider | Models |
+|---|---|
+| `openai` | `gpt-image-2.5-sunburst` (precision, editing), `gpt-image-2.5-flare` (fast), `gpt-image-2` |
+| `google` | `gemini-3-pro-image-preview`, `gemini-3.1-flash-image-preview`, `imagen-4.0-generate-001` |
+| `xai` | `grok-imagine-image`, `grok-imagine-image-quality` |
+| `fal` | `fal-ai/flux-pro/kontext/max`, `fal-ai/flux-pro/v1.1-ultra`, `fal-ai/qwen-image`, `fal-ai/recraft/v3/text-to-image` |
+| `deepinfra` | `black-forest-labs/FLUX.1-Kontext-pro`, `black-forest-labs/FLUX-1.1-pro`, `stabilityai/sd3.5` |
+| `replicate` | `black-forest-labs/flux-2-pro`, `black-forest-labs/flux-fill-pro`, `recraft-ai/recraft-v3` |
+| `fireworks` | `accounts/fireworks/models/flux-kontext-max`, `accounts/fireworks/models/flux-1-dev-fp8` |
+| `luma` | `photon-1`, `photon-flash-1` |
+| `togetherai` | `black-forest-labs/FLUX.1-kontext-max`, `black-forest-labs/FLUX.1.1-pro` |
+| `blackForestLabs` | `flux-kontext-max`, `flux-pro-1.1-ultra`, `flux-pro-1.0-fill` |
+
+Parameters:
+
+- `prompt` — required.
+- `images` — array of image URLs or data URLs. Turns the call into an edit or reference-image call. Workspace file URLs (`state.<step>.value.images[0].url`, `filedocument.url`) work directly.
+- `mask` — mask image URL for inpainting. Honoured by OpenAI, Google, Fal, DeepInfra, Replicate, Together.ai, and Black Forest Labs; xAI, Fireworks, and Luma ignore it and report a warning.
+- `n` — number of images (default 1).
+- `size` (`"1024x1024"`) or `aspectRatio` (`"16:9"`) — use one; support varies per model.
+- `seed` — for reproducible output where the provider supports it.
+- `outputFilename` — stored file name; with `n > 1` the files get `-1`, `-2`, ... suffixes. Defaults to a UUID.
+- `providerOptions` — provider-specific options keyed by provider id, for example `{ openai: { quality: "high" } }`.
+
+Result at `state.<stepName>`:
+
+```ts
+{ type: "imageResult", value: { images: [{ url, key, mimeType }], warnings: string[] } }
+// or
+{ type: "error", error: string }
+```
+
+Generated files are uploaded to the workspace bucket and registered as `filedocument` records. Guard downstream steps with `continueIf: "state.<stepName>.type === 'imageResult'"`.
+
+Editing example — apply a change to an existing image:
+
+```ts
+flowBuilder.step.genericAI("recolor", {
+  params: {
+    operation: "generateImage",
+    apiKey: flowBuilder.secret("<secret-record-id>"),
+    model: { provider: "blackForestLabs", model: "flux-kontext-max" },
+    prompt: "Make the background a soft gradient blue, keep the product unchanged",
+    images: flowBuilder.js("[state.onProductCreated.imageUrl]"),
+  },
+}),
+```
 
 ## Recursion and validation
 
