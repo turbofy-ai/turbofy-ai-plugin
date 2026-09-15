@@ -16,6 +16,8 @@ List options include `limit`, `sortOrder`, and `sortRange` on the table's sort k
 
 `useQueryTypes` and `useSearchTypes` expose `isPending`, `error`, and `data: { items, total, error? } | null`. Inspect both the hook error and `data.error`. Do not interpret a missing search index as an empty result. Use an explicit localized search field such as `title.en` when language matters.
 
+For a record selected by a dynamic route, first resolve its ID with `useParams()` from `@/navigation`. Mount a child that calls `useTypeQuery` only once the ID exists; this hook takes a required string ID and has no `enabled` option. See [navigation hooks](navigation.md) for a complete example.
+
 ## Mutations
 
 ```tsx

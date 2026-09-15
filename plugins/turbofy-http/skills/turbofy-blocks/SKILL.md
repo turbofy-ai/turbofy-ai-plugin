@@ -54,11 +54,12 @@ export type IBuildingBlockProps<TConfig = unknown> = PropsWithChildren<{
 
 - `locale` is the language source; do not infer it from the browser URL.
 - User-visible strings come from `config.copies`.
-- `dynamicData` is the optional server-rendered snapshot. Treat `undefined` as loading and an inner `null` as empty/not found.
-- Read route state from `params`, `slug`, and `searchParams`, not `window.location`.
-- For live query-string state after shallow navigation, use `useSearchParams()` from `@/navigation`.
+- `dynamicData` is an optional server-rendered snapshot. When the block configures server dynamic data, handle `undefined` while it loads and an inner `null` as empty/not found. Blocks that only fetch on the client must use their hooks' loading states instead.
+- For resolved route record IDs, use `useParams()` from `@/navigation`. Private dynamic pages do not supply SSR-resolved IDs in the `params` prop or automatically show a 404 for a missing entity. Handle resolution and missing records on the client.
+- For live query-string state, including after shallow navigation, use `useSearchParams()` from `@/navigation`. It returns a plain string map.
+- Read [navigation hooks](references/navigation.md) for signatures, loading/error/not-found handling, and a private-page example.
 
-Example:
+Example for a block with configured server dynamic data:
 
 ```tsx
 import type { IBuildingBlockProps } from "@/lib/types";
@@ -102,7 +103,7 @@ Import client data helpers from `@/api`. Use table ids from `schema.ts`/`table_l
 | Surface                                                | Use                                                            |
 | ------------------------------------------------------ | -------------------------------------------------------------- |
 | `defaultConfig`                                        | Copies, static links, stable layout settings                   |
-| `defaultDynamicData`                                   | SSR first paint based on route/search params                   |
+| `defaultDynamicData`                                   | SSR initial data; private-page route params are raw URL values |
 | `useTypeQuery`, `useListTypes`, `useListTypesByParent` | Client reads and interaction                                   |
 | mutation hooks                                         | Client creates, updates, and deletes                           |
 | `useQueryTypes`, `useSearchTypes`                      | Structured filtering and full-text search on searchable tables |
@@ -110,7 +111,7 @@ Import client data helpers from `@/api`. Use table ids from `schema.ts`/`table_l
 | `useUploadFile`                                        | Browser uploads                                                |
 | `useWsSubscription`                                    | Server-side record changes delivered to authenticated clients  |
 
-For SPA dashboards, prefer client hooks and use config only for copies/links. For SSR sites, use `dynamicData` for the first render and hooks for subsequent filtering, pagination, or mutation.
+For private dynamic pages, resolve IDs with `useParams()` before mounting the record-fetching component. For SPA dashboards, prefer client hooks and use config only for copies/links. For public SSR sites, use `dynamicData` for the first render and hooks for subsequent filtering, pagination, or mutation.
 
 ## Navigation — mandatory
 
@@ -134,8 +135,7 @@ For SPA dashboards, prefer client hooks and use config only for copies/links. Fo
   NEVER to `<a href={...}>`.
 - Resolve localized links with client `useLinks` or server
   `$$std.batchLink`; do not concatenate locale paths.
-- Import route hooks `useParams` and `useSearchParams` from
-  `@/navigation`; see [navigation hooks](#navigation-hooks).
+- Import `Link`, `navigate`, `useParams`, and `useSearchParams` from `@/navigation`. The hooks work in preview and published apps; see [navigation hooks](references/navigation.md).
 - Query-only navigation such as
   `navigate("?q=shoes", { shallow: true, replace: true })`
   keeps the current pathname. Do not use `shallow: true` when
@@ -163,14 +163,18 @@ Use `@/lib/auth` for app sessions, including `useCurrentUser`, password forms, r
 2. TypeScript and imports are clean.
 3. Copy keys exist for every locale.
 4. Data calls use table ids and handle loading/empty/error states. For private dynamic pages, also verify a valid entity, a missing entity, resolution errors, and navigation between entities.
+   <<<<<<< HEAD
 5. Inspect navigation in changed blocks and shared components before
    publishing. Every internal destination MUST use `Link` or `navigate`
    from `@/navigation`. Inspect every authored `<a>` and every component
    that renders an anchor: each must point to an explicitly external
    destination. Trace variable URLs to their source; do not assume they
    are external. Fix violations before running `app_push`.
-6. `block_type_check` passes before `app_push`; inspect block and shared-module failures in both dry-run and apply results.
-7. Verify related blocks together when they consume shared state, and test the auth flow in the intended preview or published environment.
+   =======
+6. Navigation uses Turbofy helpers.
+   > > > > > > > f26e69b (Document private dynamic pages and navigation hooks)
+7. `block_type_check` passes before `app_push`; inspect block and shared-module failures in both dry-run and apply results.
+8. Verify related blocks together when they consume shared state, and test the auth flow in the intended preview or published environment.
 
 ## See also
 

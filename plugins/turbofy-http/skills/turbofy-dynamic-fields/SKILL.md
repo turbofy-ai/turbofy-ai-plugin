@@ -13,7 +13,7 @@ Dynamic fields compute config and data using server-side JavaScript and the `$$s
 - Instance overrides: `config` and `dynamicData` on `appBuilder.block(...)` in the relevant page module.
 - Use the app pull/edit/push workflow in `turbofy-apps`.
 
-Use config for stable layout settings and links. Use dynamic data for route-dependent initial content, then client hooks for subsequent interactions. UI strings belong in `localizations`; the platform supplies `config.copies` automatically.
+Use config for stable layout settings and links. Use dynamic data for public route-dependent initial content, then client hooks for subsequent interactions. UI strings belong in `localizations`; the platform supplies `config.copies` automatically.
 
 ## Evaluation contract
 
@@ -25,9 +25,15 @@ Use config for stable layout settings and links. Use dynamic data for route-depe
 
 Read [server data helper signatures](references/server-data.md) for fetching, filtering, pagination, translations, links, and reserved arguments. Use actual table ids from `schema.ts` or `table_list`.
 
+## Private dynamic pages
+
+Private pages (`authenticated`, `group`, or `user`) do not resolve route entities during SSR and do not automatically redirect to a 404 when an entity is missing. Explicitly configured server dynamic data can still run, but its `params` are raw URL values, not resolved record IDs. Do not pass those values to `getRecord` as if they were IDs.
+
+Resolve IDs in React with `useParams()` from `@/navigation`, handle loading, resolution errors, and `notFound`, then fetch the record with client data hooks. See [navigation hooks and the private-page example](../turbofy-blocks/references/navigation.md). Do not wait for SSR `dynamicData` when the block only fetches on the client.
+
 ## Initial record example
 
-Inside a block type's `defaultDynamicData` string:
+For a public dynamic page with a configured record parameter, inside a block type's `defaultDynamicData` string:
 
 ```js
 const productId = $$std.getDynamicArg("params.product");
@@ -56,4 +62,4 @@ const result = $$std.listRecords("<product-table-id>", {
 
 For unexpected `null`, verify the table id, argument names, and return shape. Temporarily return a constant to isolate evaluation errors, then restore the intended code. If nested evaluation is the problem, use `skipDynamicResolver` only when raw source is the desired input. Keep requested fields available when using `dynamicArgs.fields`.
 
-The React block must handle the initial `undefined` loading state and distinguish it from loaded-but-empty data. See `turbofy-blocks`.
+When server dynamic data is configured, the React block must handle the initial `undefined` loading state and distinguish it from loaded-but-empty data. For client-only data, use the hooks' loading states. See `turbofy-blocks`.
