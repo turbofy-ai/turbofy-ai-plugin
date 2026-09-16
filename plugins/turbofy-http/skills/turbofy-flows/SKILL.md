@@ -1,6 +1,6 @@
 ---
 name: turbofy-flows
-description: "Create or edit Turbofy automation flows, triggers, schedules, dynamic step parameters, and secret references through the hosted MCP. Validate and push flow.ts using flowBuilder. For database schemas use turbofy-platform."
+description: "Create, edit, or debug Turbofy automation flows: triggers, schedules, dynamic step parameters, secret references, and run logs through the hosted MCP. Validate and push flow.ts using flowBuilder. For database schemas use turbofy-platform."
 ---
 
 # Turbofy Flows
@@ -208,6 +208,27 @@ flowBuilder.step.genericAI("recolor", {
   },
 }),
 ```
+
+## Run logs
+
+Every trigger match creates a `flowrun` record in the workspace. With `debug: true` each run also writes `flowrunlog` records as it progresses. Both are system tables: read them with the data tools, never write them.
+
+1. Set `debug: true`, push, and fire the flow. A manual trigger fires on `data_create { ofType: "flowtrigger", item: { flowId: "<flowId>" } }`; a table trigger fires on the matching record write.
+2. `data_list { ofType: "flowrun", sortOrder: "DESC" }` — newest run first. Each run carries `flowId`, `status`, and `createdAt`.
+3. `data_list { ofType: "flowrunlog", sortOrder: "DESC" }` — newest logs first. Keep the entries whose `flowRunId` matches the run; the tools have no parent filter.
+
+Each log's `content` is an object with a `type` and a `name` (the trigger key or step name):
+
+| `type` | Payload |
+|---|---|
+| `trigger-matched` | `data` — the trigger data |
+| `step-started` | `rawInput` — the `state` the step sees, `step` — its definition |
+| `step-params-resolved` | `resolvedParams` — params after `js` and `secret` resolution; secrets show as `[REDACTED]` |
+| `step-completed` | `output` — what was stored at `state.<name>` |
+| `step-skipped` / `step-discontinued` | the step was skipped by `skipIf` or stopped by `continueIf` |
+| `step-error` | `error` — message and stack |
+
+A run that ends at `step-started` with no `step-completed` or `step-error` is still executing or hit the step timeout. The console shows the same logs per step under the step's Test tab. Runs and logs are visible to workspace members only, not to app users. Logs are kept indefinitely, so turn `debug` off once the flow behaves.
 
 ## Recursion and validation
 
