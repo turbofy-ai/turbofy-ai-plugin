@@ -1,6 +1,6 @@
 ---
 name: turbofy-platform
-description: "Discover Turbofy organizations and workspaces, edit database schemas, manage records, and upload files through the hosted MCP. Also use for platform orientation and selecting an app, block, or flow skill."
+description: "Discover Turbofy organizations and workspaces, edit database schemas, manage records, upload files, and read or publish files the user attached in chat, through the hosted MCP. Also use for platform orientation and selecting an app, block, or flow skill."
 ---
 
 # Turbofy Platform
@@ -28,6 +28,7 @@ workspaces/<environment>/<workspaceId>/
   tsconfig.json
   apps/<appId>/...
   flows/<flowId>/...
+  files/<fileId>          # scratch copies from file_pull, never saved
 ```
 
 Use only the MCP filesystem tools:
@@ -50,7 +51,7 @@ The tree persists across MCP session restarts. Never edit server baselines such 
 | Blocks | `block_type_open`, `block_type_check`, shared `fs_*` |
 | Flows | `flow_init`, `flow_pull`, `flow_push`, `flow_delete` |
 | Records | `data_list`, `data_get`, `data_create`, `data_add_many`, `data_update`, `data_delete` |
-| Files | `file_upload`, `file_upload_intent` |
+| Files | `file_upload`, `file_upload_intent`, `file_pull`, `file_set_visibility` |
 
 Use `dryRun: true` before mutating pushes. It is the default for `workspace_push`, `app_push`, and `flow_push`.
 
@@ -166,6 +167,22 @@ Prefer app files and `app_push` for app-owned entities. Use `data_*` for ordinar
 Supply the MIME type when known; a URL response MIME type can be used otherwise. The default folder is workspace-scoped. The returned record id can be stored anywhere that expects `ofType: "filedocument"`.
 
 Use `file_upload_intent` when the bytes are too large or should travel directly from a client to storage. It creates the `FileDocument` and returns a presigned `PUT` request, including the URL, method, and required `Content-Type`. Upload the bytes exactly as instructed; the upload URL is temporary and should not be stored as the asset URL.
+
+Use `file_pull` to read a workspace file yourself. It copies the `FileDocument`'s content into the session tree at `files/<fileId>` and returns that path; inspect it with `fs_read`, or parse it with `fs_exec` (node and npm are available, so install a parser such as a PowerPoint or Excel reader when needed). The copy is scratch space: it is not saved and the Assets file is unchanged. `file_pull` only reaches workspace Assets; bring internet files in with `file_upload` and `sourceUrl` first.
+
+`file_set_visibility` makes a `FileDocument` `PUBLIC` or `PRIVATE`. A private file has no loadable URL, so an app can only show a public one. It returns the updated record, including the file's current `url`.
+
+### Chat attachments
+
+Files a user attaches in the Turbofy chat are private `FileDocument` records under Assets > Chats > the conversation title. Each one appears in the user's message as a line like:
+
+```
+[Attached file: deck.pptx, Assets file id abc12345-deck.pptx, private; not shown inline, read it in the sandbox with file_pull]
+```
+
+- Images, PDFs and text files are already in the message; text over 8k characters is cut, and `file_pull` reads the rest.
+- For anything marked "not shown inline", call `file_pull` with the file id before answering questions about its content.
+- To use an attachment in an app, such as a logo, call `file_set_visibility` with `PUBLIC`, then reference the record or its public `url`. Make a file public only when the user clearly means it for publication; a logo is, a screenshot of internal data is not. Ask when unsure.
 
 ## Core rules
 
