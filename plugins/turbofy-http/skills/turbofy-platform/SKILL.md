@@ -172,7 +172,9 @@ Use `file_pull` to read a workspace file yourself. It copies the `FileDocument`'
 
 Use `file_push` to save a file you created or edited in the session tree, such as an edited PDF, a generated chart or a converted image. It creates a new `FileDocument` from the sandbox path and returns it; the bytes go from the sandbox straight to storage, so never read them into a message or upload them with `file_upload` content. It never overwrites an existing file, so pushing an edited version leaves the original untouched; tell the user which file is new. New files are `PRIVATE` unless you pass `accessControl: "PUBLIC"`. Pass `folderId` to keep a result next to its source, for example the same `Chats` folder.
 
-Use `file_view` to look at an image or PDF yourself: it returns the file as content you can see, from Assets (`fileId`) or from the session tree (`path`). It takes PNG, JPEG, GIF, WebP and PDF up to 3.75 MB; convert other images in the sandbox and view the result by path. Views cost context, so look at what the task needs rather than every file in a folder.
+Use `file_view` to look at an image yourself: it returns the image as content you can see, from Assets (`fileId`) or from the session tree (`path`). It takes PNG, JPEG, GIF and WebP up to 3.75 MB; convert other formats in the sandbox and view the result by path. Views cost context, so look at what the task needs rather than every file in a folder.
+
+PDFs are read in the sandbox, because not every model accepts them: `file_pull` the file and extract its text with `pdfjs-dist`. When the layout matters, render the pages you need to PNG with `pdf-to-img` and `file_view` them.
 
 `file_set_visibility` makes a `FileDocument` `PUBLIC` or `PRIVATE`. A private file has no loadable URL, so an app can only show a public one. It returns the updated record, including the file's current `url`.
 
@@ -182,7 +184,7 @@ Assets folders are `filedocumentfolder` records; the workspace root folder's id 
 
 1. `data_list` with `ofType: "filedocumentfolder"` to find the folder by `name`.
 2. `data_list` with `ofType: "filedocument"`, `parentType: "filedocumentfolder"` and the folder id to list its files.
-3. `file_view` the images or PDFs you need to understand (logo colors, brand guidelines); `file_pull` text and other formats.
+3. `file_view` the images you need to understand (logo colors); `file_pull` PDFs such as brand guidelines, text and other formats, and read them in the sandbox.
 4. `file_set_visibility` with `PUBLIC` on the files the app will show, then reference the record or its `url`.
 
 ### Chat attachments
@@ -193,7 +195,7 @@ Files a user attaches in the Turbofy chat are private `FileDocument` records und
 [Attached file: deck.pptx, Assets file id abc12345-deck.pptx, private; not shown inline, read it in the sandbox with file_pull]
 ```
 
-- Images, PDFs and text files are already in the message; text over 8k characters is cut, and `file_pull` reads the rest.
+- Images and text files are already in the message; text over 8k characters is cut, and `file_pull` reads the rest. PDFs are not, read them in the sandbox as described above.
 - For anything marked "not shown inline", call `file_pull` with the file id before answering questions about its content.
 - To edit an attachment, `file_pull` it, change the copy with `fs_exec` (for PDFs, `pdf-lib` handles forms, stamps, page edits and merges; rewriting existing text in place is not practical), then `file_push` the result.
 - To use an attachment in an app, such as a logo, call `file_set_visibility` with `PUBLIC`, then reference the record or its public `url`. Make a file public only when the user clearly means it for publication; a logo is, a screenshot of internal data is not. Ask when unsure.
