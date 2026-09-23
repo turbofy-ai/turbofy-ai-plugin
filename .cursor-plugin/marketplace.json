@@ -13,7 +13,7 @@
       "displayName": "Turbofy",
       "source": "./plugins/turbofy-http",
       "description": "Turbofy MCP plus guidance skills for typed workspace, app, flow, and block sources in a persistent remote session tree.",
-      "version": "0.0.18",
+      "version": "0.0.19",
       "author": {
         "name": "Turbofy",
         "email": "hello@turbofy.com"
