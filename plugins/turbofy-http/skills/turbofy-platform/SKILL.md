@@ -28,7 +28,7 @@ workspaces/<environment>/<workspaceId>/
   tsconfig.json
   apps/<appId>/...
   flows/<flowId>/...
-  files/<fileId>          # scratch copies from file_pull, never saved
+  files/<fileId>          # scratch space for file_pull and file_push, never saved
 ```
 
 Use only the MCP filesystem tools:
@@ -51,7 +51,7 @@ The tree persists across MCP session restarts. Never edit server baselines such 
 | Blocks | `block_type_open`, `block_type_check`, shared `fs_*` |
 | Flows | `flow_init`, `flow_pull`, `flow_push`, `flow_delete` |
 | Records | `data_list`, `data_get`, `data_create`, `data_add_many`, `data_update`, `data_delete` |
-| Files | `file_upload`, `file_upload_intent`, `file_pull`, `file_set_visibility` |
+| Files | `file_upload`, `file_upload_intent`, `file_pull`, `file_push`, `file_set_visibility` |
 
 Use `dryRun: true` before mutating pushes. It is the default for `workspace_push`, `app_push`, and `flow_push`.
 
@@ -170,6 +170,8 @@ Use `file_upload_intent` when the bytes are too large or should travel directly 
 
 Use `file_pull` to read a workspace file yourself. It copies the `FileDocument`'s content into the session tree at `files/<fileId>` and returns that path; inspect it with `fs_read`, or parse it with `fs_exec` (node and npm are available, so install a parser such as a PowerPoint or Excel reader when needed). The copy is scratch space: it is not saved and the Assets file is unchanged. `file_pull` only reaches workspace Assets; bring internet files in with `file_upload` and `sourceUrl` first.
 
+Use `file_push` to save a file you created or edited in the session tree, such as an edited PDF, a generated chart or a converted image. It creates a new `FileDocument` from the sandbox path and returns it; the bytes go from the sandbox straight to storage, so never read them into a message or upload them with `file_upload` content. It never overwrites an existing file, so pushing an edited version leaves the original untouched; tell the user which file is new. New files are `PRIVATE` unless you pass `accessControl: "PUBLIC"`. Pass `folderId` to keep a result next to its source, for example the same `Chats` folder.
+
 `file_set_visibility` makes a `FileDocument` `PUBLIC` or `PRIVATE`. A private file has no loadable URL, so an app can only show a public one. It returns the updated record, including the file's current `url`.
 
 ### Chat attachments
@@ -182,6 +184,7 @@ Files a user attaches in the Turbofy chat are private `FileDocument` records und
 
 - Images, PDFs and text files are already in the message; text over 8k characters is cut, and `file_pull` reads the rest.
 - For anything marked "not shown inline", call `file_pull` with the file id before answering questions about its content.
+- To edit an attachment, `file_pull` it, change the copy with `fs_exec` (for PDFs, `pdf-lib` handles forms, stamps, page edits and merges; rewriting existing text in place is not practical), then `file_push` the result.
 - To use an attachment in an app, such as a logo, call `file_set_visibility` with `PUBLIC`, then reference the record or its public `url`. Make a file public only when the user clearly means it for publication; a logo is, a screenshot of internal data is not. Ask when unsure.
 
 ## Core rules
