@@ -250,7 +250,7 @@ The flow card icon and background color are stored on the flow declaration and s
 ```ts
 export const flow = flowBuilder.buildFlow({
   color: "green", // grey | sand | purple | violet | green | red | blue | pink | orange, or "#rrggbb"
-  icon: "mail", // omit for the default robot mark
+  icon: "mail", // omit for the default bot mark
   // ...triggers, steps
 });
 ```
