@@ -158,11 +158,12 @@ Documents are ordinary files under `docs/`. Add or edit them with `fs_*`; do not
 
 ## Dashboard card appearance
 
-The app card icon and background color are set on `buildApp` and stored on the App record. They show everywhere that app is opened.
+The app card description, icon, and background color are set on `buildApp` and stored on the App record. They show everywhere that app is opened.
 
 ```ts
 export const app = appBuilder.buildApp({
   name: "My App",
+  description: "Personal profile with CV", // card subtitle, max 160 characters; omit to keep the stored value
   color: "green", // grey | sand | purple | violet | green | red | blue | pink | orange, or "#rrggbb"
   icon: "mail", // omit for the default Turbofy mark
   pages: [home],
@@ -172,7 +173,7 @@ export const app = appBuilder.buildApp({
 
 Icon ids: `bot`, `sparkles`, `mail`, `shopping-bag`, `calendar`, `user`, `users`, `file-text`, `globe`, `zap`, `heart`, `message-square`, `database`, `workflow`, `bell`, `image`, `credit-card`, `map`, `settings`, `sliders`, `star`, `truck`, `weather`, `fitness`, `marketing`, `sales`, `slides`, `project-management`.
 
-Pull the app, set `color` and/or `icon` on `buildApp`, then push. Omitting either field leaves the stored value in place.
+Pull the app, set `description`, `color`, and/or `icon` on `buildApp`, then push. Omitting any of those fields leaves the stored value in place. `description` must be at most 160 characters.
 
 ## See also
 

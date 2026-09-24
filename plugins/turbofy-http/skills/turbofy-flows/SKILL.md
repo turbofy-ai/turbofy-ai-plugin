@@ -245,10 +245,11 @@ Also review warnings about step parameter shapes, dynamic table ids, and cloud-f
 
 ## Dashboard card appearance
 
-The flow card icon and background color are stored on the flow declaration and show everywhere that flow is opened. Set them on `buildFlow` (UI-only; the runtime ignores them):
+The flow card description, icon, and background color are stored on the flow declaration and show everywhere that flow is opened. Set them on `buildFlow` (UI-only; the runtime ignores them):
 
 ```ts
 export const flow = flowBuilder.buildFlow({
+  description: "Sync new orders to the CRM", // card subtitle, max 160 characters; omit for none
   color: "green", // grey | sand | purple | violet | green | red | blue | pink | orange, or "#rrggbb"
   icon: "mail", // omit for the default bot mark
   // ...triggers, steps
@@ -257,7 +258,7 @@ export const flow = flowBuilder.buildFlow({
 
 Icon ids: `bot`, `sparkles`, `mail`, `shopping-bag`, `calendar`, `user`, `users`, `file-text`, `globe`, `zap`, `heart`, `message-square`, `database`, `workflow`, `bell`, `image`, `credit-card`, `map`, `settings`, `sliders`, `star`, `truck`, `weather`, `fitness`, `marketing`, `sales`, `slides`, `project-management`.
 
-Pull the flow, set `color` and/or `icon`, then push. Do not drop other declaration fields.
+Pull the flow, set `description`, `color`, and/or `icon`, then push. Do not drop other declaration fields. `description` must be at most 160 characters.
 
 ## See also
 
