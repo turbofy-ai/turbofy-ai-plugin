@@ -1,6 +1,6 @@
 ---
 name: turbofy-flows
-description: "Create, edit, or debug Turbofy automation flows: triggers, schedules, dynamic step parameters, secret references, and run logs through the hosted MCP. Validate and push flow.ts using flowBuilder. For database schemas use turbofy-platform."
+description: "Create, edit, or debug Turbofy automation flows: triggers, schedules, dynamic step parameters, secret references, cloud functions, and run logs through the hosted MCP. Validate and push flow.ts using flowBuilder. For database schemas use turbofy-platform."
 ---
 
 # Turbofy Flows
@@ -11,9 +11,9 @@ A flow runs an ordered sequence of steps when a trigger matches. Edit it as type
 
 | Tool | Purpose |
 |---|---|
-| `flow_pull` | Materialize all workspace flows and return available secret metadata |
+| `flow_pull` | Materialize workspace flows and cloud function sources; return functions and secret metadata |
 | `flow_init` | Create an empty remote flow and scaffold its source |
-| `flow_push` | Compile, validate, three-way merge, and push one flow; dry-run by default |
+| `flow_push` | Compile referenced functions, validate, detect conflicts, and push one flow; dry-run by default |
 | `flow_delete` | Delete a flow intentionally |
 
 ```text
@@ -24,6 +24,10 @@ workspaces/<environment>/<workspaceId>/flows/
   <flowId>/
     flow.ts       # editable
     flow.base.json # merge baseline; never edit
+  functions/<name>/
+    function.ts  # cloudFunction declaration
+    index.ts     # Node.js handler, or Dockerfile and its source context
+    function.base.json # source baseline; never edit
 ```
 
 For an existing flow:
@@ -34,7 +38,40 @@ For an existing flow:
 4. `flow_push` with the default `dryRun: true` and review validation, operations, and conflicts.
 5. Apply with `dryRun: false`.
 
-Push validates the edited flow against all remote flows and verifies referenced secret records. When the same flow changed remotely, pull again and reapply the intended edit.
+Push validates the edited flow against all remote flows and verifies referenced secret records and cloud functions. When the same flow changed remotely, pull again and reapply the intended edit.
+
+## Cloud functions
+
+Cloud functions live in the same workspace tree as flows. Create `functions/<name>/function.ts`:
+
+```ts
+import { cloudFunctionBuilder } from "@turbofy-ai/app-runtime/dsl";
+
+export const cloudFunction = cloudFunctionBuilder.buildFunction({
+  name: "transform-order",
+  runtime: "NODEJS_22_X",
+  entry: "index.ts",
+});
+```
+
+Write `index.ts` with a named `handler` export using the Lambda Function URL event/response contract. Node.js 22 and 24 runtimes bundle TypeScript/JavaScript into a CommonJS deployment artifact. Put npm dependencies in the function's own `package.json` and generate `package-lock.json` with `npm install` there. Push uses `npm ci --ignore-scripts`; use Docker for native dependencies or install scripts. Imports must stay within the function directory and its dependencies.
+
+Reference the function in `flow.ts`:
+
+```ts
+flowBuilder.step.cloudFunction("transform", {
+  params: {
+    cloudFunctionUrl: cloudFunctionBuilder.ref("transform-order"),
+    order: flowBuilder.js("state.onOrderCreated"),
+  },
+}),
+```
+
+Function names start with a lowercase letter, contain lowercase letters, digits or hyphens, and are at most 48 characters. Existing static function URLs are also accepted if they exist in the workspace. Dynamic `cloudFunctionUrl` expressions cannot be verified and are rejected by push.
+
+For Docker, declare `{ name: "transform-order", runtime: "DOCKER" }` and place a Lambda-compatible `Dockerfile` plus its text source files in that directory. Push packages the named build context and starts the workspace's CodeBuild pipeline. If the result reports `cloudFunctions[].state: "pending"`, the flow has not been saved. Retry after the build finishes; unchanged pending builds are not restarted. A failed build can be retried with another push, after inspecting/fixing the build failure.
+
+`flow_push` deploys only functions referenced by the flow, skips unchanged sources, and defaults to a dry run with no remote uploads. Applying changed functions updates their shared deployment, so other flows using them see the update too. Source archives are private `Code` records; no new system type is required. `flow_pull` restores original sources and reports source-download errors separately. Legacy functions without stored sources appear in the inventory but cannot have their original source reconstructed. Runtime changes require a new function name.
 
 ## Runtime model
 
