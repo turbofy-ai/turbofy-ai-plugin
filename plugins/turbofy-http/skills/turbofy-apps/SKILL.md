@@ -156,6 +156,15 @@ The app tree's `schema.ts` uses the same data-builder DSL as `workspace_pull`. A
 
 Documents are ordinary files under `docs/`. Add or edit them with `fs_*`; do not call generic data tools to maintain app documentation.
 
+## Dashboard card appearance
+
+The app card icon and background color live on the App record (`cmsapp`) and show everywhere that app is opened. They are not part of `app.ts`.
+
+- `settings.color`: `grey`, `sand`, `purple`, `violet`, `green`, `red`, `blue`, `pink`, `orange`, or a `#rrggbb` hex.
+- `settings.icon`: omit for the default Turbofy mark. Ids: `bot`, `sparkles`, `mail`, `shopping-bag`, `calendar`, `user`, `users`, `file-text`, `globe`, `zap`, `heart`, `message-square`, `database`, `workflow`, `bell`, `image`, `credit-card`, `map`, `settings`, `sliders`, `star`, `truck`, `weather`, `fitness`, `marketing`, `sales`, `slides`, `project-management`.
+
+Read the current `settings` with `data_get` and merge `color` and/or `icon` into that object with `data_update`. Do not replace `settings`, or auth, i18n, and fonts will be wiped.
+
 ## See also
 
 - `turbofy-platform` — discovery, schema DSL, records, files
