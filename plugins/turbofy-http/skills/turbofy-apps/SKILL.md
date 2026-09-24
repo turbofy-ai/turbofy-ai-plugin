@@ -158,12 +158,21 @@ Documents are ordinary files under `docs/`. Add or edit them with `fs_*`; do not
 
 ## Dashboard card appearance
 
-The app card icon and background color live on the App record (`cmsapp`) and show everywhere that app is opened. They are not part of `app.ts`.
+The app card icon and background color are set on `buildApp` and stored on the App record. They show everywhere that app is opened.
 
-- `settings.color`: `grey`, `sand`, `purple`, `violet`, `green`, `red`, `blue`, `pink`, `orange`, or a `#rrggbb` hex.
-- `settings.icon`: omit for the default Turbofy mark. Ids: `bot`, `sparkles`, `mail`, `shopping-bag`, `calendar`, `user`, `users`, `file-text`, `globe`, `zap`, `heart`, `message-square`, `database`, `workflow`, `bell`, `image`, `credit-card`, `map`, `settings`, `sliders`, `star`, `truck`, `weather`, `fitness`, `marketing`, `sales`, `slides`, `project-management`.
+```ts
+export const app = appBuilder.buildApp({
+  name: "My App",
+  color: "green", // grey | sand | purple | violet | green | red | blue | pink | orange, or "#rrggbb"
+  icon: "mail", // omit for the default Turbofy mark
+  pages: [home],
+  blockTypes: [navigationBlock],
+});
+```
 
-Read the current `settings` with `data_get` and merge `color` and/or `icon` into that object with `data_update`. Do not replace `settings`, or auth, i18n, and fonts will be wiped.
+Icon ids: `bot`, `sparkles`, `mail`, `shopping-bag`, `calendar`, `user`, `users`, `file-text`, `globe`, `zap`, `heart`, `message-square`, `database`, `workflow`, `bell`, `image`, `credit-card`, `map`, `settings`, `sliders`, `star`, `truck`, `weather`, `fitness`, `marketing`, `sales`, `slides`, `project-management`.
+
+Pull the app, set `color` and/or `icon` on `buildApp`, then push. Omitting either field leaves the stored value in place.
 
 ## See also
 
