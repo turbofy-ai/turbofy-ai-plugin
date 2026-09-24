@@ -243,6 +243,22 @@ A self-retrigger with a condition becomes a warning because the validator cannot
 
 Also review warnings about step parameter shapes, dynamic table ids, and cloud-function writes. Passing validation does not prove those paths are correct.
 
+## Dashboard card appearance
+
+The flow card icon and background color are stored on the flow declaration and show everywhere that flow is opened. Set them on `buildFlow` (UI-only; the runtime ignores them):
+
+```ts
+export const flow = flowBuilder.buildFlow({
+  color: "green", // grey | sand | purple | violet | green | red | blue | pink | orange, or "#rrggbb"
+  icon: "mail", // omit for the default bot mark
+  // ...triggers, steps
+});
+```
+
+Icon ids: `bot`, `sparkles`, `mail`, `shopping-bag`, `calendar`, `user`, `users`, `file-text`, `globe`, `zap`, `heart`, `message-square`, `database`, `workflow`, `bell`, `image`, `credit-card`, `map`, `settings`, `sliders`, `star`, `truck`, `weather`, `fitness`, `marketing`, `sales`, `slides`, `project-management`.
+
+Pull the flow, set `color` and/or `icon`, then push. Do not drop other declaration fields.
+
 ## See also
 
 - `turbofy-platform` — workspace discovery, schema, table ids, secret metadata

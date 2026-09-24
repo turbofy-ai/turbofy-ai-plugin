@@ -156,6 +156,24 @@ The app tree's `schema.ts` uses the same data-builder DSL as `workspace_pull`. A
 
 Documents are ordinary files under `docs/`. Add or edit them with `fs_*`; do not call generic data tools to maintain app documentation.
 
+## Dashboard card appearance
+
+The app card icon and background color are set on `buildApp` and stored on the App record. They show everywhere that app is opened.
+
+```ts
+export const app = appBuilder.buildApp({
+  name: "My App",
+  color: "green", // grey | sand | purple | violet | green | red | blue | pink | orange, or "#rrggbb"
+  icon: "mail", // omit for the default Turbofy mark
+  pages: [home],
+  blockTypes: [navigationBlock],
+});
+```
+
+Icon ids: `bot`, `sparkles`, `mail`, `shopping-bag`, `calendar`, `user`, `users`, `file-text`, `globe`, `zap`, `heart`, `message-square`, `database`, `workflow`, `bell`, `image`, `credit-card`, `map`, `settings`, `sliders`, `star`, `truck`, `weather`, `fitness`, `marketing`, `sales`, `slides`, `project-management`.
+
+Pull the app, set `color` and/or `icon` on `buildApp`, then push. Omitting either field leaves the stored value in place.
+
 ## See also
 
 - `turbofy-platform` — discovery, schema DSL, records, files
