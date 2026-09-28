@@ -172,6 +172,7 @@ WebSocket delivery requires an authenticated user. Place the chat on a protected
 - `streamText` updates one assistant draft; chunks are treated as accumulated text.
 - The block subscribes to server writes and handles access-controlled WebSocket delivery.
 - `workspace_push`, `flow_push`, and `app_push` are dry-run before apply.
+- After applying app changes, follow [app preview verification](../turbofy-apps/SKILL.md#verify-your-work-in-app-preview): inspect the loaded chat UI and, when test messages are within the authorized scope, verify sending, streaming, and conversation access with an app-user session.
 
 ## See also
 
