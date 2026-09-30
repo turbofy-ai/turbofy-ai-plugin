@@ -1,20 +1,21 @@
 {
   "name": "turbofy-http",
-  "version": "0.0.21",
-  "description": "Turbofy MCP plus guidance skills for typed workspace, app, flow, and block sources in a persistent remote session tree.",
+  "version": "0.0.22",
+  "description": "Build Turbofy apps, data models, and automations from a conversation, using the hosted MCP and workspace skills.",
   "author": {
     "name": "Turbofy",
-    "email": "hello@turbofy.com"
+    "email": "hello@turbofy.com",
+    "url": "https://turbofy.com"
   },
   "license": "MIT",
-  "keywords": ["turbofy", "mcp", "apps", "cms", "blocks", "http"],
+  "keywords": ["turbofy", "mcp", "apps", "cms", "blocks", "flows", "automation"],
   "skills": "./skills/",
   "agents": "./agents/",
   "mcpServers": "./.mcp.json",
   "interface": {
     "displayName": "Turbofy",
-    "shortDescription": "Turbofy MCP and app-building skills.",
-    "longDescription": "Adds the Turbofy MCP plus skills for typed workspace, app, flow, and block sources, dynamic fields, and platform workflows.",
+    "shortDescription": "Build Turbofy apps, data models, and automations from a conversation.",
+    "longDescription": "Adds the hosted Turbofy MCP plus skills for workspaces, apps, blocks, flows, and dynamic fields. Documentation is at https://docs.turbofy.com.",
     "developerName": "GraphApi.io GmbH",
     "category": "Developer Tools",
     "capabilities": ["MCP", "Skills"],
@@ -24,7 +25,7 @@
       "Build a product listing section for my Turbofy app."
     ],
     "brandColor": "#14B8A6",
-    "composerIcon": "./assets/turbofy-ai-logo.svg",
-    "logo": "./assets/turbofy-ai-logo.svg"
+    "composerIcon": "./assets/turbofy-ai-icon.svg",
+    "logo": "./assets/turbofy-ai-icon.svg"
   }
 }
