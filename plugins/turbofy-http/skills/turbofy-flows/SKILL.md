@@ -129,7 +129,7 @@ Every factory follows `flowBuilder.step.<type>(name, { params, description?, nex
 | Write | `createType`, `batchCreateType`, `updateType`, `deleteType` |
 | Read | `type`, `batchGetType`, `listType`, `listTypeByParent` |
 | Logic/integration | `logic`, `httpRequest`, `cloudFunction`, `notifyWebSocket`, `googleSearch`, `linkScraper`, `htmlToPdf`, `extractImageMetadata` |
-| AI/media | `genericAI`, `openAIImageGeneration`, `elevenLabsTTS` |
+| AI/media | `genericAI`, `elevenLabsTTS` |
 
 The result of each step is stored at `state.<stepName>`. Consult the scaffold typings and validation errors for the exact parameter shape of the selected step.
 
@@ -137,7 +137,7 @@ The result of each step is stored at `state.<stepName>`. Consult the scaffold ty
 
 ## Image generation and editing
 
-Use `genericAI` with `operation: "generateImage"`. Prefer it over the legacy `openAIImageGeneration` step, which only supports DALL-E.
+Use `genericAI` with `operation: "generateImage"`.
 
 ```ts
 flowBuilder.step.genericAI("heroImage", {
