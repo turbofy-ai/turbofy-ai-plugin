@@ -8,7 +8,7 @@
     "email": "hello@turbofy.com",
     "url": "https://turbofy.com"
   },
-  "logo": "../assets/turbofy-ai-logo.png",
+  "logo": "../assets/turbofy-ai-icon.png",
   "homepage": "https://turbofy.com",
   "repository": "https://github.com/turbofy-ai/turbofy-ai-plugin",
   "license": "MIT",

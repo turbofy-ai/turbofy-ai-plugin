@@ -25,7 +25,7 @@
       "Build a product listing section for my Turbofy app."
     ],
     "brandColor": "#14B8A6",
-    "composerIcon": "./assets/turbofy-ai-logo.svg",
-    "logo": "./assets/turbofy-ai-logo.svg"
+    "composerIcon": "./assets/turbofy-ai-icon.svg",
+    "logo": "./assets/turbofy-ai-icon.svg"
   }
 }

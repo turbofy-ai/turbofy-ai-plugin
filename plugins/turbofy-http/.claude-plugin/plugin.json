@@ -3,18 +3,14 @@
   "displayName": "Turbofy",
   "version": "0.0.22",
   "description": "Build Turbofy apps, data models, and automations from a conversation, using the hosted MCP and workspace skills.",
-  "icon": "./assets/turbofy-ai-logo.png",
+  "icon": "./assets/turbofy-ai-icon.png",
   "author": {
     "name": "Turbofy",
     "email": "hello@turbofy.com",
     "url": "https://turbofy.com"
   },
   "homepage": "https://turbofy.com",
-  "documentation": "https://docs.turbofy.com",
-  "support": "https://turbofy.com/contact",
   "repository": "https://github.com/turbofy-ai/turbofy-ai-plugin",
-  "privacyPolicy": "https://turbofy.com/privacy",
-  "termsOfService": "https://turbofy.com/terms",
   "license": "MIT",
   "keywords": ["turbofy", "mcp", "apps", "cms", "blocks", "flows", "automation"]
 }

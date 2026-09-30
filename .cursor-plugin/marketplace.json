@@ -21,7 +21,7 @@
       },
       "license": "MIT",
       "homepage": "https://turbofy.com",
-      "repository": "https://github.com/graphapi-io/turbofy-ai-plugin",
+      "repository": "https://github.com/turbofy-ai/turbofy-ai-plugin",
       "keywords": ["turbofy", "mcp", "apps", "cms", "blocks", "flows", "automation"]
     }
   ]
