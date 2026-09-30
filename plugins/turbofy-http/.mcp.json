@@ -1,6 +1,7 @@
 {
   "mcpServers": {
     "Turbofy": {
+      "type": "http",
       "url": "https://mcp.turbofy.com/mcp",
       "description": "Turbofy HTTP MCP — edit typed workspace, app, flow, and block sources in a persistent remote session tree"
     }
