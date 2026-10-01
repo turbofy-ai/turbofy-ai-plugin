@@ -1,6 +1,6 @@
 {
   "name": "turbofy-http",
-  "version": "0.0.23",
+  "version": "0.0.24",
   "description": "Build Turbofy apps, data models, and automations from a conversation, using the hosted MCP and workspace skills.",
   "author": {
     "name": "Turbofy",

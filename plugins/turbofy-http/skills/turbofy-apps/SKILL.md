@@ -120,7 +120,7 @@ export const navigationBlock = appBuilder.blockType({
 });
 ```
 
-`record.ts` is build metadata and must not be imported by `index.tsx`. When runtime source exists, `app_push` publishes it. A record without `index.tsx`/`index.ts` can reuse an existing runtime or be sourceless; a newly placed UI block needs runtime source or an existing published component.
+`record.ts` is build metadata and must not be imported by `index.tsx`. It declares no npm dependencies: `app_push` derives them from the runtime source's imports and the versions installed in the app directory. When runtime source exists, `app_push` publishes it. A record without `index.tsx`/`index.ts` can reuse an existing runtime or be sourceless; a newly placed UI block needs runtime source or an existing published component.
 
 Use `block_type_check` before pushing source changes. See `turbofy-blocks` for component rules and `turbofy-dynamic-fields` for `defaultConfig`, `defaultDynamicData`, block `config`, and `dynamicData` code.
 
