@@ -17,9 +17,20 @@ For an existing app:
 2. Call `app_pull` to refresh `workspaces/<environment>/<workspaceId>/apps/<appId>/`.
 3. Inspect and edit the tree with `fs_list`, `fs_read`, `fs_search`, `fs_edit`, and `fs_write`.
 4. Call `app_push` and review its default dry run: validation, merge conflicts, app operations, schema changes, block builds, and document changes.
-5. Apply with `dryRun: false`. Check `applied`, conflicts, and block/shared-module failures before reporting success; then verify the changed app in preview. Pull again if more work follows.
+5. Apply with `dryRun: false`. Check `applied`, conflicts, and block/shared-module failures before reporting success; then [verify the changed app in preview](#verify-your-work-in-app-preview). Pull again if more work follows.
 
 `app_pull` protects modified generated files. If it reports local changes, push them, reconcile them, or use `force: true` only when intentionally discarding them. `app_push` reports conflicts when the same page, block, or block type changed remotely and in the session. Save the intended edits before refreshing and reconciling them; do not force-pull away work by default.
+
+## Verify your work in app preview
+
+After applying app changes, verify them yourself in the browser before reporting completion. A successful build or `app_push` does not establish that the rendered app looks or behaves correctly.
+
+1. Call `app_preview_create` with the app's `orgId`, `workspaceId`, and `appId`, then open the returned URL within 60 seconds using the available browser tools. The link is single-use and starts a 15-minute session; mint another when it expires. To open a specific page, append its app route as a hash, such as `#/events`, preserving the ticket query parameter.
+2. Wait for the affected page and its data to finish loading, then capture and inspect a fresh screenshot. Check the actual layout, spacing, text, images, and states affected by your changes. In the built-in Turbofy chat, use `browser({ action: "screenshot" })`; `browser_dom({ action: "snapshot" })` returns text, not a screenshot. The image returned by initial navigation may still show a loading screen.
+3. Exercise the changed behavior: click internal links, use relevant filters or controls, and check affected routes, locales, and access states. Use DOM tools for locating controls and diagnostics for failures; they do not replace visual inspection. Keep tests within the user's authorized scope because preview actions can write real data.
+4. Fix issues you find, apply the fixes, and repeat the affected checks. In your final response, state what you actually verified and any remaining limitation. If preview or browser tools are unavailable, report that verification is incomplete.
+
+Preview works for private apps without making them public or signing into the Turbofy console. App-user authentication is separate; the preview ticket does not bypass protected-page access. Keep ticket URLs out of committed files and durable documentation.
 
 ## App tree
 
@@ -148,7 +159,7 @@ Guest pages send signed-in users to a valid app-relative `next` destination, the
 
 Built-in Login, Signup, and Account blocks cover standard forms. For custom forms, recovery, current-user state, and social sign-in, read [auth helper usage](../turbofy-blocks/references/auth.md). Provider configuration belongs in workspace authentication settings; adding a social button alone does not enable a provider.
 
-Changes pushed to the app can be verified in console preview. Republish the standalone site through the app's publishing controls when changes must reach its deployed URL.
+Verify pushed changes using [app preview](#verify-your-work-in-app-preview). Republish the standalone site through the app's publishing controls when changes must reach its deployed URL.
 
 ## Schema and documents
 

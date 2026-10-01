@@ -163,18 +163,14 @@ Use `@/lib/auth` for app sessions, including `useCurrentUser`, password forms, r
 2. TypeScript and imports are clean.
 3. Copy keys exist for every locale.
 4. Data calls use table ids and handle loading/empty/error states. For private dynamic pages, also verify a valid entity, a missing entity, resolution errors, and navigation between entities.
-   <<<<<<< HEAD
 5. Inspect navigation in changed blocks and shared components before
    publishing. Every internal destination MUST use `Link` or `navigate`
    from `@/navigation`. Inspect every authored `<a>` and every component
    that renders an anchor: each must point to an explicitly external
    destination. Trace variable URLs to their source; do not assume they
    are external. Fix violations before running `app_push`.
-   =======
-6. Navigation uses Turbofy helpers.
-   > > > > > > > f26e69b (Document private dynamic pages and navigation hooks)
-7. `block_type_check` passes before `app_push`; inspect block and shared-module failures in both dry-run and apply results.
-8. Verify related blocks together when they consume shared state, and test the auth flow in the intended preview or published environment.
+6. `block_type_check` passes before `app_push`; inspect block and shared-module failures in both dry-run and apply results.
+7. After applying changes, follow [app preview verification](../turbofy-apps/SKILL.md#verify-your-work-in-app-preview): inspect a fresh screenshot of the loaded UI and exercise the changed interactions. Verify related blocks together when they consume shared state, and test the auth flow in the intended environment.
 
 ## See also
 

@@ -63,3 +63,5 @@ const result = $$std.listRecords("<product-table-id>", {
 For unexpected `null`, verify the table id, argument names, and return shape. Temporarily return a constant to isolate evaluation errors, then restore the intended code. If nested evaluation is the problem, use `skipDynamicResolver` only when raw source is the desired input. Keep requested fields available when using `dynamicArgs.fields`.
 
 When server dynamic data is configured, the React block must handle the initial `undefined` loading state and distinguish it from loaded-but-empty data. For client-only data, use the hooks' loading states. See `turbofy-blocks`.
+
+After applying app data changes, follow [app preview verification](../turbofy-apps/SKILL.md#verify-your-work-in-app-preview). Check the rendered data on the affected routes and locales, including the relevant loading, empty, or error states; successful evaluation alone does not verify the page.
