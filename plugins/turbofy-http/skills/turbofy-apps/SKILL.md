@@ -93,7 +93,9 @@ export const dashboard = appBuilder.page({
 - Preserve ids for existing pages and blocks. Omit an id to create a new entity.
 - Removing an existing declaration deletes it on push; never build a partial app.
 - Array order determines block order unless an explicit position is present.
-- For localized slugs, use `slug: { en: "products", de: "produkte" }`. A nested page uses `parent`; a dynamic page uses `slug: "[product]"` and `param: { collection: ProductTable, slugField: "slug" }`. Use the actual schema table declaration and an existing slug field.
+- For localized slugs, use `slug: { en: "products", de: "produkte" }`. A nested page uses `parent`; a dynamic page uses `slug: "[product]"` and `param: { collection: ProductTable }`. Use the actual schema table declaration.
+- Configure custom record slugs in `buildApp({ slugConfig: { [ProductTable.id]: { pattern: "{slug}" } } })`. Patterns apply to every page using that collection in this app. Use existing fields; multi-field patterns such as `"{category}-{title}"` are supported. Without an app-level pattern, routes use record IDs. Slug mappings are generated asynchronously, so verify a custom URL after pushing.
+- Legacy apps may pull page parameters containing `slugField`. It is no longer supported and push rejects it. Remove it, preserving any existing app-level pattern. If no pattern exists, configure one for the intended custom URLs or leave the collection without a pattern to use record IDs. Do not add a new pattern over an existing one just to match a legacy field.
 - Page visibility is `public` (default), `guest`, `authenticated`, `group`, or `user`. Private modes require a signed-in app user; user/group data permissions are configured separately.
 
 ## Private dynamic pages
