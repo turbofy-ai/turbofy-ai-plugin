@@ -13,7 +13,7 @@
       "displayName": "Turbofy",
       "source": "./plugins/turbofy-http",
       "description": "Build Turbofy apps, data models, and automations from a conversation, using the hosted MCP and workspace skills.",
-      "version": "0.0.23",
+      "version": "0.0.25",
       "author": {
         "name": "Turbofy",
         "email": "hello@turbofy.com",
