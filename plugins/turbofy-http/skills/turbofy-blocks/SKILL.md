@@ -32,7 +32,8 @@ Rules:
 - Runtime files may import siblings, platform modules, installed dependencies, and `@/shared/<Name>` exports. Do not import another block type or unrelated app declarations. See [shared utilities and state](references/shared-modules.md) for reusable code and Zustand stores.
 - Supported runtime sources are `.ts`, `.tsx`, `.js`, `.jsx`, `.css`, and `.json`.
 - A block type without `index.tsx`/`index.ts` is valid and sourceless.
-- Add custom dependencies to the app's user-owned `package.json`; pulls preserve it. Install them in the app project with `fs_exec` and wait for completion before validation.
+- To use an npm package, install it in the app directory with `fs_exec` (`npm install <package>`) and wait for completion before validation; pulls preserve the user-owned `package.json`. `app_push` records the installed version of every package that block and shared-module sources import and publishes its preview bundle. A push that imports a package that is not installed fails before writing anything.
+- Load packages with `import`, not `require()`. CSS that a package imports itself is not loaded in the preview; import the styles from the block's own `.css` file or use Tailwind classes.
 - Never edit `.base/` or `app.base.json`.
 
 ## Runtime props

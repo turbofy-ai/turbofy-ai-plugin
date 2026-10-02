@@ -51,7 +51,7 @@ This is client UI state, not durable storage or synchronization between visitors
 ## Hosted workflow
 
 1. `app_pull`, then inspect existing `shared/` modules before adding another.
-2. Edit with `fs_*`; add dependencies to the app's `package.json` and install them with `fs_exec` when needed.
+2. Edit with `fs_*`. To use an npm package, install it in the app directory with `fs_exec` (`npm install <package>`); `app_push` records it for every module and block that imports it.
 3. Check consuming blocks with `block_type_check` and run `app_push` with `dryRun: true`. Inspect `sharedModules` and block failures as well as TypeScript results.
 4. Apply with `dryRun: false`, inspect the reported failures, and verify the consuming blocks together in preview.
 
