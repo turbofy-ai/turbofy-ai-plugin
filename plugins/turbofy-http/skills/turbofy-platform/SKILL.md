@@ -140,6 +140,37 @@ Rules:
 
 Generic `data_*` tools work across workspace tables and system CMS tables. Use the exact table id/`ofType`; runtime code must not substitute display names.
 
+### Writing records
+
+`data_create`, `data_add_many`, and `data_update` take record columns directly as top-level properties of `item` (or each object in `items`). Do not wrap columns in `{ fields: ... }`; that wrapper is used by app mutation hooks, not these tools.
+
+For a table with `activity` and `sets` columns:
+
+```jsonc
+// data_create
+{
+  "orgId": "<orgId>", "workspaceId": "<workspaceId>", "ofType": "<tableId>",
+  "item": { "activity": "Squat", "sets": 3 }
+}
+
+// data_add_many
+{
+  "orgId": "<orgId>", "workspaceId": "<workspaceId>", "ofType": "<tableId>",
+  "items": [
+    { "activity": "Squat", "sets": 3 },
+    { "activity": "Deadlift", "sets": 2 }
+  ]
+}
+
+// data_update: put the record ID beside item and only changed columns inside it.
+{
+  "orgId": "<orgId>", "workspaceId": "<workspaceId>", "ofType": "<tableId>",
+  "id": "<recordId>", "item": { "sets": 4 }
+}
+```
+
+Use exact column names from `table_list` (`includeFields: true`). Unknown properties are rejected before writing; `data_add_many` checks every item before starting writes. If a write reports an unknown property, correct the payload using the schema. Nested objects belong only inside declared columns that accept them, such as JSON columns. A column actually named `fields` is valid when declared in the table.
+
 Common system `ofType` values:
 
 | Entity | `ofType` |
