@@ -50,7 +50,7 @@ The tree persists across MCP session restarts. Never edit server baselines such 
 | Apps | `app_init`, `app_pull`, `app_push` |
 | Blocks | `block_type_open`, `block_type_check`, shared `fs_*` |
 | Flows | `flow_init`, `flow_pull`, `flow_push`, `flow_delete` |
-| Records | `data_list`, `data_get`, `data_create`, `data_add_many`, `data_update`, `data_delete` |
+| Records | `data_list`, `data_get`, `data_query`, `data_search`, `data_create`, `data_add_many`, `data_update`, `data_delete` |
 | Files | `file_upload`, `file_upload_intent`, `file_pull`, `file_push`, `file_view`, `file_set_visibility` |
 
 Use `dryRun: true` before mutating pushes. It is the default for `workspace_push`, `app_push`, and `flow_push`.
@@ -171,6 +171,51 @@ For a table with `activity` and `sets` columns:
 
 Use exact column names from `table_list` (`includeFields: true`). Unknown properties are rejected before writing; `data_add_many` checks every item before starting writes. If a write reports an unknown property, correct the payload using the schema. Nested objects belong only inside declared columns that accept them, such as JSON columns. A column actually named `fields` is valid when declared in the table.
 
+`data_add_many` writes all items in one batch. An item whose `id` matches an existing record replaces that record; omit `id` to always create.
+
+### Parent links
+
+A child record points at its parent through a link column that is not declared in the schema. `table_list` returns it in each table's `parents`:
+
+```jsonc
+{ "ofType": "<productTableId>", "name": "Product", "parents": [
+  { "slot": "first", "parentType": "<categoryTableId>", "linkField": "categorySlug", "connectorField": "slug" }
+] }
+```
+
+- The link column is the parent table name in lowerCamelCase plus its connector field: `categoryId` normally, `categorySlug` when the parent declares a `@connector` field `slug`.
+- Store the parent's `connectorField` value, not always its id: `item: { name: "Drill", categorySlug: "tools" }`.
+- List a parent's children with `data_list` and `parentType` (the parent `ofType`) plus `parentId` (the same connector value).
+- Take link names from `parents`; do not guess them or send a `connections` object.
+
+### Dynamic fields
+
+A `dynamicField` column computes its value when the record is read. Its schema declaration holds the default code; a record may store its own code in that column, which replaces the default for that record. Reads return the computed result, never the stored code. Localized string fields always run their schema code, and values written to them are discarded.
+
+### Querying and searching
+
+`data_query` and `data_search` work on tables with the `"@fts_searchable"` directive (see Searchable tables). On other tables they fail with instructions; use `data_list` there.
+
+```jsonc
+// data_query: filter and sort by column values; every condition must match.
+{
+  "orgId": "<orgId>", "workspaceId": "<workspaceId>", "ofType": "<tableId>",
+  "where": { "status": { "eq": "active" }, "price": { "lt": 100 }, "attributes.voltage": { "ge": 12 } },
+  "orderBy": "price", "order": "ASC", "limit": 50, "offset": 0
+}
+
+// data_search: ranked full-text search over the given fields.
+{
+  "orgId": "<orgId>", "workspaceId": "<workspaceId>", "ofType": "<tableId>",
+  "query": "cordless drill", "fields": ["name", "description"], "lang": "en"
+}
+```
+
+- Operators: `eq`, `ne`, `lt`, `le`, `gt`, `ge`, `in` (array), `contains`, `beginsWith`, `isNull` (boolean).
+- Filterable: `id`, `createdAt`, `updatedAt`, declared scalar and enum columns, Json keys with `indexKeys`, and localized fields per locale (`title.en`). Parent links and dynamic fields are not filterable.
+- Both return `{ items, total }`; page `data_query` with `offset` and up to 250 records per call.
+- An index is rebuilt after a schema push; until then the tools report that it is not built yet.
+
 Common system `ofType` values:
 
 | Entity | `ofType` |
@@ -185,7 +230,7 @@ Common system `ofType` values:
 | Slug mapping | `slugmapping` |
 | Secret metadata | `secret` |
 
-Prefer app files and `app_push` for app-owned entities. Use `data_*` for ordinary records and targeted inspection. Paginate `data_list` with its returned `nextToken`. Pass `parentType` and `parentId` to `data_list` to get only the children of one record, for example the files in an Assets folder.
+Prefer app files and `app_push` for app-owned entities. Use `data_*` for ordinary records and targeted inspection. Paginate `data_list` with its returned `nextToken`. Pass `parentType` and `parentId` to `data_list` to get only the children of one record, for example the files in an Assets folder (see Parent links).
 
 ## Files
 
