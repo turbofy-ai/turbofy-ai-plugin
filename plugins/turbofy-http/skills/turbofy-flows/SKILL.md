@@ -1,11 +1,11 @@
 ---
 name: turbofy-flows
-description: "Create, edit, or debug Turbofy automation flows: triggers, schedules, dynamic step parameters, secret references, cloud functions, and run logs through the hosted MCP. Validate and push flow.ts using flowBuilder. For database schemas use turbofy-platform."
+description: "Create, edit, or debug Turbofy automation flows: triggers, branches, loops, schedules, dynamic step parameters, secret references, cloud functions, and run logs through the hosted MCP. Validate and push flow.ts using flowBuilder. For database schemas use turbofy-platform."
 ---
 
 # Turbofy Flows
 
-A flow runs an ordered sequence of steps when a trigger matches. Edit it as typed `flowBuilder` source in the hosted MCP session tree.
+A flow runs sequences of steps when a trigger matches, with conditional paths and loops where needed. Edit it as typed `flowBuilder` source in the hosted MCP session tree.
 
 ## Workflow
 
@@ -77,8 +77,8 @@ For Docker, declare `{ name: "transform-order", runtime: "DOCKER" }` and place a
 
 - A matching trigger seeds a `state` output map under the trigger key.
 - Each step reads `state`, runs, stores its result under its step name, then advances.
-- Steps run in array order unless `next` chooses a later step. Do not point back to an earlier step.
-- `skipIf` skips one step and continues. `continueIf` stops the flow when falsy.
+- Steps run in array order within their sequence unless `next` chooses a later step in that sequence. Branches and loops own nested sequences; their rules are below.
+- `skipIf` skips a step, including its contents for a branch or loop. `continueIf` stops the current sequence when falsy.
 - `debug: true` adds verbose logs; `disabled: true` prevents execution.
 
 Trigger data:
@@ -159,18 +159,114 @@ Credential fields for AI and integration steps must use `secret(...)` or `js(...
 
 ## Step catalog
 
-Every factory follows `flowBuilder.step.<type>(name, { params, description?, next?, skipIf?, continueIf? })`.
+Ordinary factories follow `flowBuilder.step.<type>(name, { params, description?, next?, skipIf?, continueIf? })`. Control steps use the nested forms below.
 
 | Category | Steps |
 |---|---|
 | Write | `createType`, `batchCreateType`, `updateType`, `deleteType` |
 | Read | `type`, `batchGetType`, `listType`, `listTypeByParent` |
 | Logic/integration | `logic`, `httpRequest`, `cloudFunction`, `notifyWebSocket`, `googleSearch`, `linkScraper`, `htmlToPdf`, `extractImageMetadata` |
+| Control | `branch`, `forEach` |
 | AI/media | `genericAI`, `elevenLabsTTS` |
 
 The result of each step is stored at `state.<stepName>`. Consult the scaffold typings and validation errors for the exact parameter shape of the selected step.
 
 `genericAI` operations include `generateText`, `generateObject`, `streamText`, `embed`, and `generateImage`. With `streamText`, downstream steps run for published stream chunks and the final result; each chunk contains the accumulated text. This is useful for updating one draft record throughout generation.
+
+## Branches
+
+Use `flowBuilder.step.branch(name, { branches: [{ when, steps }], description?, skipIf?, continueIf? })`. `when` accepts a boolean or `flowBuilder.js(...)` returning a boolean. A JavaScript condition here needs the `js` marker; a plain code string is invalid.
+
+```ts
+import { flowBuilder } from "@turbofy-ai/app-runtime/dsl";
+
+export const flow = flowBuilder.buildFlow({
+  name: "Matching paths demo",
+  triggers: { manual: flowBuilder.trigger.manual() },
+  steps: [
+    flowBuilder.step.logic("input", {
+      params: { needsShipping: true, needsInvoice: true },
+    }),
+    flowBuilder.step.branch("route", {
+      branches: [
+        {
+          when: flowBuilder.js("state.input.needsShipping === true"),
+          steps: [
+            flowBuilder.step.logic("ship", { params: { action: "ship" } }),
+            flowBuilder.step.logic("shippingDone", {
+              params: { action: flowBuilder.js("state.ship.action") },
+            }),
+          ],
+        },
+        {
+          when: flowBuilder.js("state.input.needsInvoice === true"),
+          steps: [
+            flowBuilder.step.logic("invoice", { params: { action: "invoice" } }),
+          ],
+        },
+      ],
+    }),
+  ],
+});
+```
+
+- Every matching path runs concurrently, so both paths above run. Several conditions may match. No matches ends the current sequence.
+- Each path must contain at least one step and receives its own copy of the accumulated state. Outputs from sibling paths are not shared.
+- A branch must be the last step in its containing sequence. It has no `next` option or shared continuation after its paths. Put continuation steps inside each path.
+- The branch output is `{ matchedSteps: string[] }`, containing the first step name of each matching path. It does not collect the paths' final outputs.
+
+## For each
+
+Use `flowBuilder.step.forEach(name, { items, steps, description?, next?, skipIf?, continueIf? })`. `items` is a static array or `flowBuilder.js(...)` returning an array. `steps` is the sequence run for each item; it may contain nested loops and branches.
+
+```ts
+import { flowBuilder } from "@turbofy-ai/app-runtime/dsl";
+
+export const flow = flowBuilder.buildFlow({
+  name: "Nested map demo",
+  triggers: { manual: flowBuilder.trigger.manual() },
+  steps: [
+    flowBuilder.step.forEach("loop0", {
+      items: [1, 2, 3],
+      steps: [
+        flowBuilder.step.forEach("inner", {
+          items: flowBuilder.js("[10, 100]"),
+          steps: [
+            flowBuilder.step.logic("multiply", {
+              params: {
+                value: flowBuilder.js("state.loop0.item * state.inner.item"),
+                index: flowBuilder.js("state.inner.index"),
+              },
+            }),
+          ],
+        }),
+        flowBuilder.step.logic("iterationResult", {
+          params: {
+            number: flowBuilder.js("state.loop0.item"),
+            products: flowBuilder.js("state.inner.result"),
+          },
+        }),
+      ],
+    }),
+    flowBuilder.step.logic("afterLoop", {
+      params: { results: flowBuilder.js("state.loop0.result") },
+    }),
+  ],
+});
+```
+
+- Inside an iteration, `state.<loopName>.item` is the current value and `.index` is its zero-based position. Each iteration has its own state; outer loop items remain available in nested loops by the outer loop name.
+- Each loop runs up to 10 iterations concurrently. A step after the loop runs once, after its iterations succeed.
+- After completion, `state.<loopName>` is `{ items, result }`. `result` has the input array's length and order, and each entry is the output of that iteration's last step, like JavaScript `map`. Body step outputs are local to the iteration; use the loop's `result` after it.
+- An empty input produces `result: []` and continues. An empty body produces one `null` per input item; an iteration that returns no output also contributes `null`. If the last body step is a branch, its output is `{ matchedSteps }`, not an aggregation of path outputs.
+
+### Structure and limits
+
+- Step names are unique across the entire flow, including every path and nested loop. `next` links must stay within the same sequence; never link into another path, into a loop body from outside, or back to an earlier step.
+- Author nested `branches` and `steps` in the DSL. The compiled JSON declaration keeps one flat `steps` map: branches point to path heads through `params.branches`, loops point to their body head through `params.bodyStep`, and a loop's `nextStep` points to its continuation. `flow_pull` reconstructs the nested DSL; `detachedSteps` is for preserving existing unconnected steps, not for authoring loop bodies or paths.
+- A flow run permits **1,000 total loop iterations**, shared across all loops, nested loops, and matching paths. Outer iterations count too: a 10-item outer loop with a 10-item inner loop in every iteration uses 110 iterations.
+- Static arrays over 1,000 items fail DSL/push validation. Dynamic arrays are checked after evaluation at runtime. Nested totals are enforced by a shared runtime counter as loops are reached; validation does not precompute every nested or dynamic expansion.
+- A separate budget of **2,500 durable operations per execution** also applies. Steps, iteration/branch contexts, and retries consume it, so complex bodies can reach this budget before the iteration limit. A limit failure stops further work; calls already in flight may finish. Use `debug: true` and inspect `step-error` logs when investigating a limit failure.
 
 ## Image generation and editing
 
@@ -271,7 +367,9 @@ A run that ends at `step-started` with no `step-completed` or `step-error` is st
 
 Errors block push:
 
-- missing or cyclic `next` targets
+- missing targets or cycles through `next`, branch paths, or loop bodies
+- shared steps or links crossing branch/loop sequence boundaries
+- duplicate step names and oversized static loop inputs
 - a table write that unconditionally retriggers the same flow
 - cross-flow write/trigger cycles
 - invalid credentials or secret ids
