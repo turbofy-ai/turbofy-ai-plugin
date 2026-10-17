@@ -1,6 +1,6 @@
 # Turbofy Plugin Marketplace
 
-This repository is a **plugin marketplace** for AI coding assistants — **Claude Code**, **Codex**, **Cursor**, or **OpenCode**. It ships the **Turbofy** (`turbofy-http`) plugin: a hosted MCP with typed schema, app, flow, and block workflows in a persistent remote session tree, edited with `fs_*` tools.
+This repository is a **plugin marketplace** for AI coding assistants — **Claude Code**, **Codex**, **Cursor**, or **OpenCode**. It ships the **Turbofy** plugin: a hosted MCP with typed schema, app, flow, and block workflows in a persistent remote session tree, edited with `fs_*` tools.
 
 ---
 
@@ -51,7 +51,7 @@ That's it — from now on you can just use it.
 7. Click **Built by OpenAI** next to the plugin search input again.
 8. Select **Turbofy**.
 9. Click the **+** button next to the plugin in the search results, then **Install**.
-10. In a chat window, click the **+** button → **Plugins** → the plugin name, or type `@turbofy-http`.
+10. In a chat window, click the **+** button → **Plugins** → the plugin name, or type `@turbofy`.
 11. The first time you use it, a browser window opens to authenticate with your Turbofy credentials.
 12. Sign in — from then on you can work on your apps directly from Codex.
 
@@ -79,14 +79,14 @@ OpenCode doesn't yet support installing this kind of plugin in one click, so you
 }
 ```
 
-Copy [`plugins/turbofy-http/skills/`](plugins/turbofy-http/skills/) into `.opencode/skills/` or `~/.config/opencode/skills/`.
+Copy [`plugins/turbofy/skills/`](plugins/turbofy/skills/) into `.opencode/skills/` or `~/.config/opencode/skills/`.
 
 ---
 
 ## What you get after installing
 
 - HTTP MCP — typed schema, app, flow, and block sources in `workspaces/<environment>/<workspaceId>/`.
-- Skills under `plugins/turbofy-http/skills/` covering the hosted pull/edit/push workflow.
+- Skills under `plugins/turbofy/skills/` covering the hosted pull/edit/push workflow.
 
 You don't need to remember skill names — your assistant picks the right one as you work.
 
@@ -95,7 +95,7 @@ You don't need to remember skill names — your assistant picks the right one as
 ## Troubleshooting
 
 - **No custom icon in Claude Code.** Claude's plugin marketplace does not yet render custom plugin icons — all plugins show the same default placeholder ([anthropics/claude-code#28187](https://github.com/anthropics/claude-code/issues/28187)). The `icon` field is set in `.claude-plugin/` for when support lands.
-- **Tool names.** HTTP tools look like `mcp__Turbofy__<tool>` (the plugin's MCP server key is `Turbofy`). Skills are namespaced per plugin. In Codex address them as `@turbofy-http` (plugin `name` must match the directory under `plugins/`).
+- **Tool names.** HTTP tools look like `mcp__Turbofy__<tool>` (the plugin's MCP server key is `Turbofy`). Skills are namespaced per plugin. In Codex address them as `@turbofy` (plugin `name` must match the directory under `plugins/`).
 - **Nothing happened after install.** Restart the app or reload plugins. In Claude Code you can also run `/reload-plugins`.
 - **The assistant doesn't seem to see Turbofy.** Make sure you're signed in, and that the expected MCP appears as connected (in Claude Code, run `/mcp`).
 - **I want a clean reinstall.** Remove the plugin from the plugin menu, then add the marketplace again and reinstall.

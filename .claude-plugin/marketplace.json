@@ -7,9 +7,9 @@
   },
   "plugins": [
     {
-      "name": "turbofy-http",
+      "name": "turbofy",
       "displayName": "Turbofy",
-      "source": "./plugins/turbofy-http",
+      "source": "./plugins/turbofy",
       "description": "Build Turbofy apps, data models, and automations from a conversation, using the hosted MCP and workspace skills.",
       "author": {
         "name": "Turbofy",
