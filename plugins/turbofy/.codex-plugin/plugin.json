@@ -1,6 +1,6 @@
 {
   "name": "turbofy",
-  "version": "0.0.28",
+  "version": "0.0.29",
   "description": "Build Turbofy apps, data models, and automations from a conversation, using the hosted MCP and workspace skills.",
   "author": {
     "name": "Turbofy",
