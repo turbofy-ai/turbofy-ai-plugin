@@ -173,6 +173,21 @@ The result of each step is stored at `state.<stepName>`. Consult the scaffold ty
 
 `genericAI` operations include `generateText`, `generateObject`, `streamText`, `embed`, and `generateImage`. With `streamText`, downstream steps run for published stream chunks and the final result; each chunk contains the accumulated text. This is useful for updating one draft record throughout generation.
 
+For `generateText`, `generateObject`, and `streamText`, use the workspace model. Turbofy bills the run, and the step takes no `apiKey`:
+
+```ts
+flowBuilder.step.genericAI("draft", {
+  params: {
+    operation: "generateText",
+    prompt: "Hello",
+    tools: {},
+    model: { provider: "workspace", model: "auto" },
+  },
+}),
+```
+
+`"auto"` means the workspace's current default platform model. `flow_push` replaces it with that model's id before saving. After a successful push, keep the id written back into `flow.ts`. Do not invent one: no tool lists workspace models. An id already present in a pulled flow is valid and should stay. An unknown id, or one this workspace cannot run, fails push — write `"auto"` instead. If a saved model is later removed or the workspace can no longer use it, the step runs the current default. `embed` and `generateImage` cannot use `provider: "workspace"`; they still take the caller's `apiKey` secret.
+
 ## Branches
 
 Use `flowBuilder.step.branch(name, { branches: [{ when, steps }], description?, skipIf?, continueIf? })`. `when` accepts a boolean or `flowBuilder.js(...)` returning a boolean. A JavaScript condition here needs the `js` marker; a plain code string is invalid.
@@ -373,6 +388,7 @@ Errors block push:
 - a table write that unconditionally retriggers the same flow
 - cross-flow write/trigger cycles
 - invalid credentials or secret ids
+- a workspace `genericAI` model id that does not exist or that this workspace cannot run (`"auto"` is accepted and resolved to the default)
 
 A self-retrigger with a condition becomes a warning because the validator cannot prove the condition terminates. Ensure the condition excludes records written by the flow, for example a Message INSERT flow that only accepts `role === 'user'` and writes `role: 'assistant'`.
 

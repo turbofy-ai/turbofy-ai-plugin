@@ -147,11 +147,43 @@ For private dynamic pages, resolve IDs with `useParams()` before mounting the re
 
 Use `@/lib/auth` for app sessions, including `useCurrentUser`, password forms, recovery, and `signInWithSocialProvider`. Read [auth helper usage](references/auth.md) for signatures, result handling, and preview/published callbacks. Configure access and provider prerequisites with `turbofy-apps`.
 
+## UI components — mandatory
+
+Interactive controls MUST use the shadcn/ui components already provided at `@/components/ui`. Import them from that path. Do not install a second copy, and do not restyle a native control to imitate one.
+
+A native interactive element is allowed only when `@/components/ui` has no component for that control. Look in that directory before writing `<select>`, `<button>`, `<input>`, `<textarea>`, or a hand-rolled menu.
+
+Option dropdowns MUST use `Select` from `@/components/ui/select`. NEVER use `<select>`, `<option>`, or `NativeSelect` from `@/components/ui/native-select`. `NativeSelect` opens the operating-system menu.
+
+```tsx
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
+<Select value={status} onValueChange={setStatus}>
+  <SelectTrigger>
+    <SelectValue placeholder={config.copies?.statusPlaceholder} />
+  </SelectTrigger>
+  <SelectContent>
+    <SelectItem value="open">{config.copies?.statusOpen}</SelectItem>
+    <SelectItem value="closed">{config.copies?.statusClosed}</SelectItem>
+  </SelectContent>
+</Select>
+```
+
+Action menus MUST use `DropdownMenu` from `@/components/ui/dropdown-menu`.
+
+Use the matching shadcn component when it exists, including `Button`, `Input`, `Textarea`, `Checkbox`, `Switch`, `RadioGroup`, `Label`, `Dialog`, `Tabs`, `Popover`, and `Combobox`.
+
 ## UI requirements
 
 - Use semantic HTML and a correct heading hierarchy.
 - Use Tailwind theme tokens (`bg-background`, `text-foreground`, `text-muted-foreground`, `border-border`, `bg-primary`) and support dark mode.
-- Prefer shadcn/ui primitives for interactive controls and `lucide-react` for icons.
+- Interactive controls follow the shadcn rule above. Icons come from `lucide-react`.
 - Make layouts responsive; use a centered max-width container and intentional spacing.
 - Provide copy-driven loading, empty, and error states. Skeletons should approximate the final footprint.
 - Keep visible focus states and label icon-only controls with `aria-label`.
@@ -164,14 +196,15 @@ Use `@/lib/auth` for app sessions, including `useCurrentUser`, password forms, r
 2. TypeScript and imports are clean.
 3. Copy keys exist for every locale.
 4. Data calls use table ids and handle loading/empty/error states. For private dynamic pages, also verify a valid entity, a missing entity, resolution errors, and navigation between entities.
-5. Inspect navigation in changed blocks and shared components before
+5. Inspect interactive controls before publishing. Every option dropdown uses `Select` from `@/components/ui/select`, and every action menu uses `DropdownMenu`. `<select>`, `<option>`, and `NativeSelect` are violations. Every other control uses its `@/components/ui` component when one exists.
+6. Inspect navigation in changed blocks and shared components before
    publishing. Every internal destination MUST use `Link` or `navigate`
    from `@/navigation`. Inspect every authored `<a>` and every component
    that renders an anchor: each must point to an explicitly external
    destination. Trace variable URLs to their source; do not assume they
    are external. Fix violations before running `app_push`.
-6. `block_type_check` passes before `app_push`; inspect block and shared-module failures in both dry-run and apply results.
-7. After applying changes, follow [app preview verification](../turbofy-apps/SKILL.md#verify-your-work-in-app-preview): inspect a fresh screenshot of the loaded UI and exercise the changed interactions. Verify related blocks together when they consume shared state, and test the auth flow in the intended environment.
+7. `block_type_check` passes before `app_push`; inspect block and shared-module failures in both dry-run and apply results.
+8. After applying changes, follow [app preview verification](../turbofy-apps/SKILL.md#verify-your-work-in-app-preview): inspect a fresh screenshot of the loaded UI and exercise the changed interactions. Verify related blocks together when they consume shared state, and test the auth flow in the intended environment.
 
 ## See also
 

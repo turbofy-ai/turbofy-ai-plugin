@@ -5,10 +5,10 @@
   },
   "plugins": [
     {
-      "name": "turbofy-http",
+      "name": "turbofy",
       "source": {
         "source": "local",
-        "path": "./plugins/turbofy-http"
+        "path": "./plugins/turbofy"
       },
       "policy": {
         "installation": "AVAILABLE",

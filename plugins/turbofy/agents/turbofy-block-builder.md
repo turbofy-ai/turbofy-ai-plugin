@@ -33,6 +33,7 @@ Build or modify exactly one block type. Stay inside the assigned block directory
 - Never edit `.base/`, `app.base.json`, or `schema.base.json`.
 - Do not import `record.ts` from runtime source or import another block type.
 - Use table ids, not table names, in `$$std` calls and client data hooks.
+- Interactive controls use `@/components/ui`. Option dropdowns use `Select`. Never use `<select>`, `<option>`, or `NativeSelect`.
 
 ## Shared code
 
