@@ -1,7 +1,7 @@
 {
   "name": "turbofy",
   "displayName": "Turbofy",
-  "version": "0.0.29",
+  "version": "1.0.0",
   "description": "Build Turbofy apps, data models, and automations from a conversation, using the hosted MCP and workspace skills.",
   "icon": "./assets/turbofy-ai-icon.png",
   "author": {
