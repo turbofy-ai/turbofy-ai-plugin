@@ -10,7 +10,10 @@
     "url": "https://turbofy.com"
   },
   "homepage": "https://turbofy.com",
+  "documentationUrl": "https://docs.turbofy.com",
+  "supportUrl": "https://turbofy.com/contact",
   "privacyPolicyUrl": "https://turbofy.com/privacy",
+  "termsOfServiceUrl": "https://turbofy.com/terms",
   "repository": "https://github.com/turbofy-ai/turbofy-ai-plugin",
   "license": "MIT",
   "keywords": ["turbofy", "mcp", "apps", "cms", "blocks", "flows", "automation"]
