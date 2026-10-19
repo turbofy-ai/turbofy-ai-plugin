@@ -38,9 +38,9 @@ interface SelectionState {
   select: (id: string | null) => void;
 }
 
-export const useSelection = create<SelectionState>((set) => ({
+export const useSelection = create<SelectionState>((update) => ({
   selectedId: null,
-  select: (selectedId) => set({ selectedId }),
+  select: (selectedId) => update({ selectedId }),
 }));
 ```
 
