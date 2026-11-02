@@ -9,12 +9,12 @@ A flow runs sequences of steps when a trigger matches, with conditional paths an
 
 ## Workflow
 
-| Tool | Purpose |
-|---|---|
-| `flow_pull` | Materialize workspace flows and cloud function sources; return functions and secret metadata |
-| `flow_init` | Create an empty remote flow and scaffold its source |
-| `flow_push` | Compile referenced functions, validate, detect conflicts, and push one flow; dry-run by default |
-| `flow_delete` | Delete a flow intentionally |
+| Tool          | Purpose                                                                                         |
+| ------------- | ----------------------------------------------------------------------------------------------- |
+| `flow_pull`   | Materialize workspace flows and cloud function sources; return functions and secret metadata    |
+| `flow_init`   | Create an empty remote flow and scaffold its source                                             |
+| `flow_push`   | Compile referenced functions, validate, detect conflicts, and push one flow; dry-run by default |
+| `flow_delete` | Delete a flow intentionally                                                                     |
 
 ```text
 workspaces/<environment>/<workspaceId>/flows/
@@ -63,6 +63,7 @@ flowBuilder.step.cloudFunction("transform", {
   params: {
     cloudFunctionUrl: cloudFunctionBuilder.ref("transform-order"),
     order: flowBuilder.js("state.onOrderCreated"),
+    apiKey: flowBuilder.secret("<secret-record-id>"),
   },
 }),
 ```
@@ -72,6 +73,33 @@ Function names start with a lowercase letter, contain lowercase letters, digits 
 For Docker, declare `{ name: "transform-order", runtime: "DOCKER" }` and place a Lambda-compatible `Dockerfile` plus its text source files in that directory. Push packages the named build context and starts the workspace's CodeBuild pipeline. If the result reports `cloudFunctions[].state: "pending"`, the flow has not been saved. Retry after the build finishes; unchanged pending builds are not restarted. A failed build can be retried with another push, after inspecting/fixing the build failure.
 
 `flow_push` deploys only functions referenced by the flow, skips unchanged sources, and defaults to a dry run with no remote uploads. Applying changed functions updates their shared deployment, so other flows using them see the update too. Source archives are private `Code` records; no new system type is required. `flow_pull` restores original sources and reports source-download errors separately. Legacy functions without stored sources appear in the inventory but cannot have their original source reconstructed. Runtime changes require a new function name.
+
+### Secrets in cloud functions
+
+A cloud function never receives a secret's value. A secret param such as `apiKey` arrives as the placeholder `{{turbofy:secret:apiKey}}`. To use it, send the request through the Turbofy secret broker with `@turbofy-ai/secrets`. The broker puts the real value in place and redacts it from the response.
+
+```ts
+import { createSecretFetch, secret } from "@turbofy-ai/secrets";
+
+export const handler = async (event) => {
+  const fetch = createSecretFetch(event);
+  const response = await fetch("https://api.example.com/orders", {
+    headers: { Authorization: `Bearer ${secret("apiKey")}` },
+  });
+  return { statusCode: 200, body: await response.text() };
+};
+```
+
+- `createSecretFetch(event)` takes the raw Function URL event or its parsed body. It throws "This invocation received no Turbofy secrets…" when the step passed no secret params.
+- `secret(path)` takes the step param name, dot-separated when nested (`"auth.token"`). The placeholder is safe to log or return.
+- Placeholders work only in header values and URL query values. A placeholder in the body fails with `PLACEHOLDER_NOT_ALLOWED`.
+- The destination must use HTTPS on the default port, and its host must be in the secret's allowed hosts; otherwise the request fails with `HOST_NOT_ALLOWED`. Only a workspace admin can set allowed hosts, in the dashboard. Tell the user which host to add.
+- Only secrets passed to this step can be used; others fail with `SECRET_NOT_GRANTED`.
+- Redirects are returned, not followed.
+- Broker rejections throw `SecretBrokerError` with `code`, `status` and `message`.
+- Never put secret values in function code, never read them from environment variables, and never call the API with the global `fetch` plus a secret.
+
+Packaging: add `"@turbofy-ai/secrets": "^0.0.1"` to the function's `package.json` and run `npm install` there; push bundles it like any other dependency. Single-file uploads on the Node.js 22/24 runtimes get the package automatically. Docker images must install it themselves, for example with `npm install @turbofy-ai/secrets` in the `Dockerfile`. Requires Node.js 22.12 or later; ESM and CommonJS handlers both work.
 
 ## Runtime model
 
@@ -151,6 +179,7 @@ Schedules update automatically on push. Disabling a flow disables its schedules;
 - Static values are stored as written.
 - `flowBuilder.js("<expression>")` evaluates against `state` when the step runs.
 - `flowBuilder.secret("<secret-record-id>")` resolves a managed secret just in time.
+- Cloud functions receive a placeholder instead of the value and use it through `@turbofy-ai/secrets`. See [Secrets in cloud functions](#secrets-in-cloud-functions).
 - To return an object literal from `js`, wrap it: `flowBuilder.js("({ id: state.x.id })")`.
 - Markers inside arrays are not addressable; wrap the whole array in one `js(...)` expression.
 - Discover secret ids with `data_list { ofType: "secret" }` or the `flow_pull` result. Values are created and managed in the dashboard and must never appear in source.
@@ -161,13 +190,13 @@ Credential fields for AI and integration steps must use `secret(...)` or `js(...
 
 Ordinary factories follow `flowBuilder.step.<type>(name, { params, description?, next?, skipIf?, continueIf? })`. Control steps use the nested forms below.
 
-| Category | Steps |
-|---|---|
-| Write | `createType`, `batchCreateType`, `updateType`, `deleteType` |
-| Read | `type`, `batchGetType`, `listType`, `listTypeByParent` |
+| Category          | Steps                                                                                                                          |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| Write             | `createType`, `batchCreateType`, `updateType`, `deleteType`                                                                    |
+| Read              | `type`, `batchGetType`, `listType`, `listTypeByParent`                                                                         |
 | Logic/integration | `logic`, `httpRequest`, `cloudFunction`, `notifyWebSocket`, `googleSearch`, `linkScraper`, `htmlToPdf`, `extractImageMetadata` |
-| Control | `branch`, `forEach` |
-| AI/media | `genericAI`, `elevenLabsTTS` |
+| Control           | `branch`, `forEach`                                                                                                            |
+| AI/media          | `genericAI`, `elevenLabsTTS`                                                                                                   |
 
 The result of each step is stored at `state.<stepName>`. Consult the scaffold typings and validation errors for the exact parameter shape of the selected step.
 
@@ -216,7 +245,9 @@ export const flow = flowBuilder.buildFlow({
         {
           when: flowBuilder.js("state.input.needsInvoice === true"),
           steps: [
-            flowBuilder.step.logic("invoice", { params: { action: "invoice" } }),
+            flowBuilder.step.logic("invoice", {
+              params: { action: "invoice" },
+            }),
           ],
         },
       ],
@@ -309,18 +340,18 @@ flowBuilder.step.updateType("saveImage", {
 
 Providers and representative models (`model` accepts any id the provider serves):
 
-| Provider | Models |
-|---|---|
-| `openai` | `gpt-image-2.5-sunburst` (precision, editing), `gpt-image-2.5-flare` (fast), `gpt-image-2` |
-| `google` | `gemini-3-pro-image-preview`, `gemini-3.1-flash-image-preview`, `imagen-4.0-generate-001` |
-| `xai` | `grok-imagine-image`, `grok-imagine-image-quality` |
-| `fal` | `fal-ai/flux-pro/kontext/max`, `fal-ai/flux-pro/v1.1-ultra`, `fal-ai/qwen-image`, `fal-ai/recraft/v3/text-to-image` |
-| `deepinfra` | `black-forest-labs/FLUX.1-Kontext-pro`, `black-forest-labs/FLUX-1.1-pro`, `stabilityai/sd3.5` |
-| `replicate` | `black-forest-labs/flux-2-pro`, `black-forest-labs/flux-fill-pro`, `recraft-ai/recraft-v3` |
-| `fireworks` | `accounts/fireworks/models/flux-kontext-max`, `accounts/fireworks/models/flux-1-dev-fp8` |
-| `luma` | `photon-1`, `photon-flash-1` |
-| `togetherai` | `black-forest-labs/FLUX.1-kontext-max`, `black-forest-labs/FLUX.1.1-pro` |
-| `blackForestLabs` | `flux-kontext-max`, `flux-pro-1.1-ultra`, `flux-pro-1.0-fill` |
+| Provider          | Models                                                                                                              |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------- |
+| `openai`          | `gpt-image-2.5-sunburst` (precision, editing), `gpt-image-2.5-flare` (fast), `gpt-image-2`                          |
+| `google`          | `gemini-3-pro-image-preview`, `gemini-3.1-flash-image-preview`, `imagen-4.0-generate-001`                           |
+| `xai`             | `grok-imagine-image`, `grok-imagine-image-quality`                                                                  |
+| `fal`             | `fal-ai/flux-pro/kontext/max`, `fal-ai/flux-pro/v1.1-ultra`, `fal-ai/qwen-image`, `fal-ai/recraft/v3/text-to-image` |
+| `deepinfra`       | `black-forest-labs/FLUX.1-Kontext-pro`, `black-forest-labs/FLUX-1.1-pro`, `stabilityai/sd3.5`                       |
+| `replicate`       | `black-forest-labs/flux-2-pro`, `black-forest-labs/flux-fill-pro`, `recraft-ai/recraft-v3`                          |
+| `fireworks`       | `accounts/fireworks/models/flux-kontext-max`, `accounts/fireworks/models/flux-1-dev-fp8`                            |
+| `luma`            | `photon-1`, `photon-flash-1`                                                                                        |
+| `togetherai`      | `black-forest-labs/FLUX.1-kontext-max`, `black-forest-labs/FLUX.1.1-pro`                                            |
+| `blackForestLabs` | `flux-kontext-max`, `flux-pro-1.1-ultra`, `flux-pro-1.0-fill`                                                       |
 
 Parameters:
 
@@ -367,14 +398,16 @@ Every trigger match creates a `flowrun` record in the workspace. With `debug: tr
 
 Each log's `content` is an object with a `type` and a `name` (the trigger key or step name):
 
-| `type` | Payload |
-|---|---|
-| `trigger-matched` | `data` — the trigger data |
-| `step-started` | `rawInput` — the `state` the step sees, `step` — its definition |
-| `step-params-resolved` | `resolvedParams` — params after `js` and `secret` resolution; secrets show as `[REDACTED]` |
-| `step-completed` | `output` — what was stored at `state.<name>` |
-| `step-skipped` / `step-discontinued` | the step was skipped by `skipIf` or stopped by `continueIf` |
-| `step-error` | `error` — message and stack |
+| `type`                               | Payload                                                                                    |
+| ------------------------------------ | ------------------------------------------------------------------------------------------ |
+| `trigger-matched`                    | `data` — the trigger data                                                                  |
+| `step-started`                       | `rawInput` — the `state` the step sees, `step` — its definition                            |
+| `step-params-resolved`               | `resolvedParams` — params after `js` and `secret` resolution; secrets show as `[REDACTED]` |
+| `step-completed`                     | `output` — what was stored at `state.<name>`                                               |
+| `step-skipped` / `step-discontinued` | the step was skipped by `skipIf` or stopped by `continueIf`                                |
+| `step-error`                         | `error` — message and stack                                                                |
+
+For a cloud function step, `step-params-resolved` shows secret params as `[REDACTED]`, while the function itself receives `{{turbofy:secret:<path>}}`. A step error of "Internal Server Error" or "Unexpected token 'I'" means the function crashed; check the function's CloudWatch log.
 
 A run that ends at `step-started` with no `step-completed` or `step-error` is still executing or hit the step timeout. The console shows the same logs per step under the step's Test tab. Runs and logs are visible to workspace members only, not to app users. Logs are kept indefinitely, so turn `debug` off once the flow behaves.
 
