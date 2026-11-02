@@ -63,9 +63,37 @@ flowBuilder.step.cloudFunction("transform", {
   params: {
     cloudFunctionUrl: cloudFunctionBuilder.ref("transform-order"),
     order: flowBuilder.js("state.onOrderCreated"),
+    apiKey: flowBuilder.secret("<secret-record-id>"),
   },
 }),
 ```
+
+### Secrets in cloud functions
+
+A cloud function never receives a secret's value. A secret param such as `apiKey` arrives as the placeholder `{{turbofy:secret:apiKey}}`. To use it, send the request through the Turbofy secret broker with `@turbofy-ai/secrets`. The broker puts the real value in place and redacts it from the response.
+
+```ts
+import { createSecretFetch, secret } from "@turbofy-ai/secrets";
+
+export const handler = async (event) => {
+  const fetch = createSecretFetch(event);
+  const response = await fetch("https://api.example.com/orders", {
+    headers: { Authorization: `Bearer ${secret("apiKey")}` },
+  });
+  return { statusCode: 200, body: await response.text() };
+};
+```
+
+- `createSecretFetch(event)` takes the raw Function URL event or its parsed body. It throws "This invocation received no Turbofy secrets…" when the step passed no secret params.
+- `secret(path)` takes the step param name, dot-separated when nested (`"auth.token"`). The placeholder is safe to log or return.
+- Placeholders work only in header values and URL query values. A placeholder in the body fails with `PLACEHOLDER_NOT_ALLOWED`.
+- The destination must use HTTPS on the default port, and its host must be in the secret's allowed hosts; otherwise the request fails with `HOST_NOT_ALLOWED`. Only a workspace admin can set allowed hosts, in the dashboard. Tell the user which host to add.
+- Only secrets passed to this step can be used; others fail with `SECRET_NOT_GRANTED`.
+- Redirects are returned, not followed.
+- Broker rejections throw `SecretBrokerError` with `code`, `status` and `message`.
+- Never put secret values in function code, never read them from environment variables, and never call the API with the global `fetch` plus a secret.
+
+Packaging: add `"@turbofy-ai/secrets": "^0.0.1"` to the function's `package.json` and run `npm install` there; push bundles it like any other dependency. Single-file uploads on the Node.js 22/24 runtimes get the package automatically. Docker images must install it themselves, for example with `npm install @turbofy-ai/secrets` in the `Dockerfile`. Requires Node.js 22.12 or later; ESM and CommonJS handlers both work.
 
 Function names start with a lowercase letter, contain lowercase letters, digits or hyphens, and are at most 48 characters. Existing static function URLs are also accepted if they exist in the workspace. Dynamic `cloudFunctionUrl` expressions cannot be verified and are rejected by push.
 
@@ -151,6 +179,7 @@ Schedules update automatically on push. Disabling a flow disables its schedules;
 - Static values are stored as written.
 - `flowBuilder.js("<expression>")` evaluates against `state` when the step runs.
 - `flowBuilder.secret("<secret-record-id>")` resolves a managed secret just in time.
+- Cloud functions receive a placeholder instead of the value and use it through `@turbofy-ai/secrets`. See [Secrets in cloud functions](#secrets-in-cloud-functions).
 - To return an object literal from `js`, wrap it: `flowBuilder.js("({ id: state.x.id })")`.
 - Markers inside arrays are not addressable; wrap the whole array in one `js(...)` expression.
 - Discover secret ids with `data_list { ofType: "secret" }` or the `flow_pull` result. Values are created and managed in the dashboard and must never appear in source.
@@ -375,6 +404,8 @@ Each log's `content` is an object with a `type` and a `name` (the trigger key or
 | `step-completed` | `output` — what was stored at `state.<name>` |
 | `step-skipped` / `step-discontinued` | the step was skipped by `skipIf` or stopped by `continueIf` |
 | `step-error` | `error` — message and stack |
+
+For a cloud function step, `step-params-resolved` shows secret params as `[REDACTED]`, while the function itself receives `{{turbofy:secret:<path>}}`. A step error of "Internal Server Error" or "Unexpected token 'I'" means the function crashed; check the function's CloudWatch log.
 
 A run that ends at `step-started` with no `step-completed` or `step-error` is still executing or hit the step timeout. The console shows the same logs per step under the step's Test tab. Runs and logs are visible to workspace members only, not to app users. Logs are kept indefinitely, so turn `debug` off once the flow behaves.
 
