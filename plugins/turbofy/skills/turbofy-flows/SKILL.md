@@ -9,12 +9,12 @@ A flow runs sequences of steps when a trigger matches, with conditional paths an
 
 ## Workflow
 
-| Tool | Purpose |
-|---|---|
-| `flow_pull` | Materialize workspace flows and cloud function sources; return functions and secret metadata |
-| `flow_init` | Create an empty remote flow and scaffold its source |
-| `flow_push` | Compile referenced functions, validate, detect conflicts, and push one flow; dry-run by default |
-| `flow_delete` | Delete a flow intentionally |
+| Tool          | Purpose                                                                                         |
+| ------------- | ----------------------------------------------------------------------------------------------- |
+| `flow_pull`   | Materialize workspace flows and cloud function sources; return functions and secret metadata    |
+| `flow_init`   | Create an empty remote flow and scaffold its source                                             |
+| `flow_push`   | Compile referenced functions, validate, detect conflicts, and push one flow; dry-run by default |
+| `flow_delete` | Delete a flow intentionally                                                                     |
 
 ```text
 workspaces/<environment>/<workspaceId>/flows/
@@ -68,6 +68,12 @@ flowBuilder.step.cloudFunction("transform", {
 }),
 ```
 
+Function names start with a lowercase letter, contain lowercase letters, digits or hyphens, and are at most 48 characters. Existing static function URLs are also accepted if they exist in the workspace. Dynamic `cloudFunctionUrl` expressions cannot be verified and are rejected by push.
+
+For Docker, declare `{ name: "transform-order", runtime: "DOCKER" }` and place a Lambda-compatible `Dockerfile` plus its text source files in that directory. Push packages the named build context and starts the workspace's CodeBuild pipeline. If the result reports `cloudFunctions[].state: "pending"`, the flow has not been saved. Retry after the build finishes; unchanged pending builds are not restarted. A failed build can be retried with another push, after inspecting/fixing the build failure.
+
+`flow_push` deploys only functions referenced by the flow, skips unchanged sources, and defaults to a dry run with no remote uploads. Applying changed functions updates their shared deployment, so other flows using them see the update too. Source archives are private `Code` records; no new system type is required. `flow_pull` restores original sources and reports source-download errors separately. Legacy functions without stored sources appear in the inventory but cannot have their original source reconstructed. Runtime changes require a new function name.
+
 ### Secrets in cloud functions
 
 A cloud function never receives a secret's value. A secret param such as `apiKey` arrives as the placeholder `{{turbofy:secret:apiKey}}`. To use it, send the request through the Turbofy secret broker with `@turbofy-ai/secrets`. The broker puts the real value in place and redacts it from the response.
@@ -94,12 +100,6 @@ export const handler = async (event) => {
 - Never put secret values in function code, never read them from environment variables, and never call the API with the global `fetch` plus a secret.
 
 Packaging: add `"@turbofy-ai/secrets": "^0.0.1"` to the function's `package.json` and run `npm install` there; push bundles it like any other dependency. Single-file uploads on the Node.js 22/24 runtimes get the package automatically. Docker images must install it themselves, for example with `npm install @turbofy-ai/secrets` in the `Dockerfile`. Requires Node.js 22.12 or later; ESM and CommonJS handlers both work.
-
-Function names start with a lowercase letter, contain lowercase letters, digits or hyphens, and are at most 48 characters. Existing static function URLs are also accepted if they exist in the workspace. Dynamic `cloudFunctionUrl` expressions cannot be verified and are rejected by push.
-
-For Docker, declare `{ name: "transform-order", runtime: "DOCKER" }` and place a Lambda-compatible `Dockerfile` plus its text source files in that directory. Push packages the named build context and starts the workspace's CodeBuild pipeline. If the result reports `cloudFunctions[].state: "pending"`, the flow has not been saved. Retry after the build finishes; unchanged pending builds are not restarted. A failed build can be retried with another push, after inspecting/fixing the build failure.
-
-`flow_push` deploys only functions referenced by the flow, skips unchanged sources, and defaults to a dry run with no remote uploads. Applying changed functions updates their shared deployment, so other flows using them see the update too. Source archives are private `Code` records; no new system type is required. `flow_pull` restores original sources and reports source-download errors separately. Legacy functions without stored sources appear in the inventory but cannot have their original source reconstructed. Runtime changes require a new function name.
 
 ## Runtime model
 
@@ -190,13 +190,13 @@ Credential fields for AI and integration steps must use `secret(...)` or `js(...
 
 Ordinary factories follow `flowBuilder.step.<type>(name, { params, description?, next?, skipIf?, continueIf? })`. Control steps use the nested forms below.
 
-| Category | Steps |
-|---|---|
-| Write | `createType`, `batchCreateType`, `updateType`, `deleteType` |
-| Read | `type`, `batchGetType`, `listType`, `listTypeByParent` |
+| Category          | Steps                                                                                                                          |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| Write             | `createType`, `batchCreateType`, `updateType`, `deleteType`                                                                    |
+| Read              | `type`, `batchGetType`, `listType`, `listTypeByParent`                                                                         |
 | Logic/integration | `logic`, `httpRequest`, `cloudFunction`, `notifyWebSocket`, `googleSearch`, `linkScraper`, `htmlToPdf`, `extractImageMetadata` |
-| Control | `branch`, `forEach` |
-| AI/media | `genericAI`, `elevenLabsTTS` |
+| Control           | `branch`, `forEach`                                                                                                            |
+| AI/media          | `genericAI`, `elevenLabsTTS`                                                                                                   |
 
 The result of each step is stored at `state.<stepName>`. Consult the scaffold typings and validation errors for the exact parameter shape of the selected step.
 
@@ -245,7 +245,9 @@ export const flow = flowBuilder.buildFlow({
         {
           when: flowBuilder.js("state.input.needsInvoice === true"),
           steps: [
-            flowBuilder.step.logic("invoice", { params: { action: "invoice" } }),
+            flowBuilder.step.logic("invoice", {
+              params: { action: "invoice" },
+            }),
           ],
         },
       ],
@@ -338,18 +340,18 @@ flowBuilder.step.updateType("saveImage", {
 
 Providers and representative models (`model` accepts any id the provider serves):
 
-| Provider | Models |
-|---|---|
-| `openai` | `gpt-image-2.5-sunburst` (precision, editing), `gpt-image-2.5-flare` (fast), `gpt-image-2` |
-| `google` | `gemini-3-pro-image-preview`, `gemini-3.1-flash-image-preview`, `imagen-4.0-generate-001` |
-| `xai` | `grok-imagine-image`, `grok-imagine-image-quality` |
-| `fal` | `fal-ai/flux-pro/kontext/max`, `fal-ai/flux-pro/v1.1-ultra`, `fal-ai/qwen-image`, `fal-ai/recraft/v3/text-to-image` |
-| `deepinfra` | `black-forest-labs/FLUX.1-Kontext-pro`, `black-forest-labs/FLUX-1.1-pro`, `stabilityai/sd3.5` |
-| `replicate` | `black-forest-labs/flux-2-pro`, `black-forest-labs/flux-fill-pro`, `recraft-ai/recraft-v3` |
-| `fireworks` | `accounts/fireworks/models/flux-kontext-max`, `accounts/fireworks/models/flux-1-dev-fp8` |
-| `luma` | `photon-1`, `photon-flash-1` |
-| `togetherai` | `black-forest-labs/FLUX.1-kontext-max`, `black-forest-labs/FLUX.1.1-pro` |
-| `blackForestLabs` | `flux-kontext-max`, `flux-pro-1.1-ultra`, `flux-pro-1.0-fill` |
+| Provider          | Models                                                                                                              |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------- |
+| `openai`          | `gpt-image-2.5-sunburst` (precision, editing), `gpt-image-2.5-flare` (fast), `gpt-image-2`                          |
+| `google`          | `gemini-3-pro-image-preview`, `gemini-3.1-flash-image-preview`, `imagen-4.0-generate-001`                           |
+| `xai`             | `grok-imagine-image`, `grok-imagine-image-quality`                                                                  |
+| `fal`             | `fal-ai/flux-pro/kontext/max`, `fal-ai/flux-pro/v1.1-ultra`, `fal-ai/qwen-image`, `fal-ai/recraft/v3/text-to-image` |
+| `deepinfra`       | `black-forest-labs/FLUX.1-Kontext-pro`, `black-forest-labs/FLUX-1.1-pro`, `stabilityai/sd3.5`                       |
+| `replicate`       | `black-forest-labs/flux-2-pro`, `black-forest-labs/flux-fill-pro`, `recraft-ai/recraft-v3`                          |
+| `fireworks`       | `accounts/fireworks/models/flux-kontext-max`, `accounts/fireworks/models/flux-1-dev-fp8`                            |
+| `luma`            | `photon-1`, `photon-flash-1`                                                                                        |
+| `togetherai`      | `black-forest-labs/FLUX.1-kontext-max`, `black-forest-labs/FLUX.1.1-pro`                                            |
+| `blackForestLabs` | `flux-kontext-max`, `flux-pro-1.1-ultra`, `flux-pro-1.0-fill`                                                       |
 
 Parameters:
 
@@ -396,14 +398,14 @@ Every trigger match creates a `flowrun` record in the workspace. With `debug: tr
 
 Each log's `content` is an object with a `type` and a `name` (the trigger key or step name):
 
-| `type` | Payload |
-|---|---|
-| `trigger-matched` | `data` — the trigger data |
-| `step-started` | `rawInput` — the `state` the step sees, `step` — its definition |
-| `step-params-resolved` | `resolvedParams` — params after `js` and `secret` resolution; secrets show as `[REDACTED]` |
-| `step-completed` | `output` — what was stored at `state.<name>` |
-| `step-skipped` / `step-discontinued` | the step was skipped by `skipIf` or stopped by `continueIf` |
-| `step-error` | `error` — message and stack |
+| `type`                               | Payload                                                                                    |
+| ------------------------------------ | ------------------------------------------------------------------------------------------ |
+| `trigger-matched`                    | `data` — the trigger data                                                                  |
+| `step-started`                       | `rawInput` — the `state` the step sees, `step` — its definition                            |
+| `step-params-resolved`               | `resolvedParams` — params after `js` and `secret` resolution; secrets show as `[REDACTED]` |
+| `step-completed`                     | `output` — what was stored at `state.<name>`                                               |
+| `step-skipped` / `step-discontinued` | the step was skipped by `skipIf` or stopped by `continueIf`                                |
+| `step-error`                         | `error` — message and stack                                                                |
 
 For a cloud function step, `step-params-resolved` shows secret params as `[REDACTED]`, while the function itself receives `{{turbofy:secret:<path>}}`. A step error of "Internal Server Error" or "Unexpected token 'I'" means the function crashed; check the function's CloudWatch log.
 
