@@ -47,7 +47,7 @@ The tree persists across MCP session restarts. Never edit server baselines such 
 |---|---|
 | Discovery | `list_organizations`, `list_workspaces`, `table_list` |
 | Schema | `workspace_pull`, `workspace_push` |
-| Apps | `app_init`, `app_pull`, `app_push` |
+| Apps | `app_init`, `app_pull`, `app_push`, `app_push_status` |
 | Blocks | `block_type_open`, `block_type_check`, shared `fs_*` |
 | Flows | `flow_init`, `flow_pull`, `flow_push`, `flow_delete` |
 | Records | `data_list`, `data_get`, `data_query`, `data_search`, `data_create`, `data_add_many`, `data_update`, `data_delete` |

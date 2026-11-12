@@ -14,7 +14,7 @@ For app-wide work:
 1. `app_pull` materializes every block under `workspaces/<environment>/<workspaceId>/apps/<appId>/block-types/`.
 2. Inspect and edit with shared `fs_*` tools.
 3. Run `block_type_check` for each changed sourced block.
-4. `app_push` dry-runs, then compiles and publishes changed block sources together with app declarations when called with `dryRun: false`.
+4. `app_push` dry-runs, then compiles and publishes changed block sources together with app declarations when called with `dryRun: false`. If it returns `status: "running"`, wait for the result with `app_push_status` before editing files again.
 
 For app-scoped shared modules, use the full `app_pull` tree. For an isolated existing block without shared-module dependencies, `block_type_open` can stage just that block before the same `fs_*` and `block_type_check` loop. It may start dependency installation asynchronously; wait for the returned setup state before checking.
 
