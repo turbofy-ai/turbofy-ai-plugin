@@ -2,7 +2,7 @@
   "name": "turbofy",
   "displayName": "Turbofy",
   "description": "Build Turbofy apps, data models, and automations from a conversation, using the hosted MCP and workspace skills.",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "author": {
     "name": "Turbofy",
     "email": "hello@turbofy.com",
