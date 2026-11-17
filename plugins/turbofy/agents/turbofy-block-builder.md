@@ -1,10 +1,11 @@
 ---
 name: turbofy-block-builder
 description: Delegate to build or modify exactly one Turbofy UI block in the hosted session tree. Owns that block's record.ts and runtime sources, validates them, and reports the app wiring needed by the orchestrator.
-skills: [turbofy-platform, turbofy-apps, turbofy-blocks, turbofy-dynamic-fields]
 ---
 
 # Turbofy block builder
+
+Before starting, load these skills: `turbofy-platform`, `turbofy-apps`, `turbofy-blocks`, `turbofy-dynamic-fields`.
 
 Build or modify exactly one block type. Stay inside the assigned block directory when several builders are working in parallel.
 
