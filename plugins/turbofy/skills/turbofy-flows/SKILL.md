@@ -63,7 +63,7 @@ flowBuilder.step.cloudFunction("transform", {
   params: {
     cloudFunctionUrl: cloudFunctionBuilder.ref("transform-order"),
     order: flowBuilder.js("state.onOrderCreated"),
-    apiKey: flowBuilder.secret("<secret-record-id>"),
+    YOUR_API_KEY: flowBuilder.secret("<secret-record-id>"),
   },
 }),
 ```
@@ -76,7 +76,7 @@ For Docker, declare `{ name: "transform-order", runtime: "DOCKER" }` and place a
 
 ### Secrets in cloud functions
 
-A cloud function never receives a secret's value. A secret param such as `apiKey` arrives as the placeholder `{{turbofy:secret:apiKey}}`. To use it, send the request through the Turbofy secret broker with `@turbofy-ai/secrets`. The broker puts the real value in place and redacts it from the response.
+A cloud function never receives a secret's value. A secret param such as `YOUR_API_KEY` arrives as the placeholder `{{turbofy:secret:YOUR_API_KEY}}`. To use it, send the request through the Turbofy secret broker with `@turbofy-ai/secrets`. The broker puts the real value in place and redacts it from the response.
 
 ```ts
 import { createSecretFetch, secret } from "@turbofy-ai/secrets";
@@ -84,7 +84,7 @@ import { createSecretFetch, secret } from "@turbofy-ai/secrets";
 export const handler = async (event) => {
   const fetch = createSecretFetch(event);
   const response = await fetch("https://api.example.com/orders", {
-    headers: { Authorization: `Bearer ${secret("apiKey")}` },
+    headers: { Authorization: "Bearer " + secret("YOUR_API_KEY") },
   });
   return { statusCode: 200, body: await response.text() };
 };
@@ -97,7 +97,7 @@ export const handler = async (event) => {
 - Only secrets passed to this step can be used; others fail with `SECRET_NOT_GRANTED`.
 - Redirects are returned, not followed.
 - Broker rejections throw `SecretBrokerError` with `code`, `status` and `message`.
-- Never put secret values in function code, never read them from environment variables, and never call the API with the global `fetch` plus a secret.
+- Never put secret values in function code or load them any other way, and never call the API with the global `fetch` plus a secret.
 
 Packaging: add `"@turbofy-ai/secrets": "^0.0.1"` to the function's `package.json` and run `npm install` there; push bundles it like any other dependency. Single-file uploads on the Node.js 22/24 runtimes get the package automatically. Docker images must install it themselves, for example with `npm install @turbofy-ai/secrets` in the `Dockerfile`. Requires Node.js 22.12 or later; ESM and CommonJS handlers both work.
 
