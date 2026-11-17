@@ -1,6 +1,6 @@
 ---
 name: turbofy-flows
-description: "Create, edit, or debug Turbofy automation flows: triggers, branches, loops, schedules, dynamic step parameters, secret references, cloud functions, and run logs through the hosted MCP. Validate and push flow.ts using flowBuilder. For database schemas use turbofy-platform."
+description: "Create, edit, or debug Turbofy automation flows: triggers, webhooks, branches, loops, schedules, dynamic step parameters, secret references, cloud functions, and run logs through the hosted MCP. Validate and push flow.ts using flowBuilder. For database schemas use turbofy-platform."
 ---
 
 # Turbofy Flows
@@ -115,6 +115,7 @@ Trigger data:
 - table MODIFY: `{ old, new }`
 - manual: `{}`
 - schedule: `{ scheduledTime }`
+- webhook: `{ body, headers, deliveryId, receivedAt }` (see [Webhooks](#webhooks))
 
 ## DSL
 
@@ -173,6 +174,67 @@ everyTenMinutes: flowBuilder.trigger.schedule({
 Use exactly one of `cron` or `rate`. Turbofy uses six-field cron: minutes, hours, day-of-month, month, day-of-week, year. `timezone` applies only to cron. Optional `startDate` and `endDate` accept ISO dates/datetimes.
 
 Schedules update automatically on push. Disabling a flow disables its schedules; removing a trigger removes its schedule. Advanced cron expressions can run even when the visual editor displays them as read-only. Exactly one of day-of-month/day-of-week must be `?` when the other is specified; use `rate` for simple intervals.
+
+## Webhooks
+
+A webhook trigger starts the flow when an external service POSTs to the workspace webhook URL:
+
+`POST {workspace API gateway URL}/webhooks/{workspaceId}/{flowId}/{triggerKey}`
+
+The flow editor shows the URL after the trigger is saved. Give it to the sender, e.g. as the provider's notification URL.
+
+```ts
+incoming: flowBuilder.trigger.webhook({
+  verification: { type: "stripe", secretId: "<secret-record-id>" },
+  condition: 'state.body.type === "checkout.session.completed"',
+}),
+```
+
+Every delivery must pass `verification`. `secretId` is a workspace secret record id; the user creates the secret in the dashboard.
+
+| `type` | Sender proves itself with |
+| --- | --- |
+| `bearer` | `Authorization: Bearer <secret>` |
+| `hmac-sha256` | lowercase hex HMAC of the raw body in a header; set `header` (lowercase) and optional `prefix` such as `sha256=` |
+| `stripe` | `Stripe-Signature`; the secret is the endpoint signing secret `whsec_…`, not an API key |
+| `payload-checksum` | a SHA-256 checksum inside the JSON body, computed from body fields plus the secret |
+
+Payload checksum options:
+
+- `checksumField`: dot path of the checksum, e.g. `event.checksum`.
+- `fields`: dot paths concatenated in order. A trailing `?` makes a field optional; any other missing or null field fails verification.
+- `secretPosition`: `"append"` (default) or `"prepend"`.
+- `secretTransform`: `"none"` (default) or `"reverse"`.
+
+The receiver computes the lowercase SHA-256 hex digest of the concatenated string and compares it with the checksum case-insensitively. This mode requires JSON and has no replay protection.
+
+Example for Novalnet, whose checksum is `sha256(event.tid + event.type + result.status + transaction.amount + transaction.currency + reverse(payment access key))`:
+
+```ts
+novalnet: flowBuilder.trigger.webhook({
+  verification: {
+    type: "payload-checksum",
+    secretId: "<secret-record-id>", // Novalnet payment access key
+    checksumField: "event.checksum",
+    fields: ["event.tid", "event.type", "result.status", "transaction.amount?", "transaction.currency?"],
+    secretTransform: "reverse",
+  },
+  condition: 'state.body.event.type === "PAYMENT"',
+}),
+```
+
+Other options:
+
+- `bodyFormat: "json" | "text"`: defaults to JSON. Stripe and payload checksum require JSON.
+- `forwardHeaders`: lowercase header names to pass to the flow. Authentication, cookie, API key and signature headers cannot be forwarded.
+
+Runtime behavior:
+
+- `condition` sees `state.body`, `state.headers`, `state.deliveryId` and `state.receivedAt`. Steps read the same fields under `state.<triggerKey>`.
+- JSON integers beyond `Number.MAX_SAFE_INTEGER` arrive as strings with their exact digits, for example a 17-digit transaction ID. Compare them as strings.
+- The receiver answers 200 once the delivery is queued, including deliveries the condition filtered out. It answers 401 for failed verification, 400 for invalid JSON, 413 for bodies over 64 KiB and 503 for temporary failures, so the sender can retry.
+- Deliveries can repeat: retries get a new `deliveryId`, except Stripe, which keeps its event id. Make writes idempotent, for example update a record found by the provider's order or event id, and never move a status backwards.
+- Requests and run logs contain the sender's full payload, including personal data. Keep `debug` off once the flow works.
 
 ## Dynamic params and secrets
 

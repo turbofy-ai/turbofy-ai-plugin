@@ -1,14 +1,15 @@
 {
   "name": "turbofy",
-  "description": "Turbofy plugin marketplace — HTTP MCP plus skills for building apps, block types, flows, and data models.",
   "owner": {
     "name": "Turbofy",
     "email": "hello@turbofy.com"
   },
+  "metadata": {
+    "description": "Turbofy plugin marketplace — HTTP MCP plus skills for building apps, block types, flows, and data models."
+  },
   "plugins": [
     {
       "name": "turbofy",
-      "displayName": "Turbofy",
       "source": "./plugins/turbofy",
       "description": "Build Turbofy apps, data models, and automations from a conversation, using the hosted MCP and workspace skills.",
       "author": {
@@ -19,7 +20,15 @@
       "homepage": "https://turbofy.com",
       "repository": "https://github.com/turbofy-ai/turbofy-ai-plugin",
       "license": "MIT",
-      "keywords": ["turbofy", "mcp", "apps", "cms", "blocks", "flows", "automation"]
+      "keywords": [
+        "turbofy",
+        "mcp",
+        "apps",
+        "cms",
+        "blocks",
+        "flows",
+        "automation"
+      ]
     }
   ]
 }

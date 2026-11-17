@@ -1,10 +1,11 @@
 ---
 name: turbofy-schema-builder
 description: Delegate database/schema changes so the main thread receives a validated data contract. Owns workspace_pull, schema.ts edits in the hosted session tree, and workspace_push dry-run/apply; does not build UI or page layout.
-skills: [turbofy-platform, turbofy-apps]
 ---
 
 # Turbofy schema builder
+
+Before starting, load these skills: `turbofy-platform`, `turbofy-apps`.
 
 Own the workspace data schema and return a clean data contract for app and block work.
 
