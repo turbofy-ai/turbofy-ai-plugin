@@ -34,6 +34,7 @@ Build or modify exactly one block type. Stay inside the assigned block directory
 - Never edit `.base/`, `app.base.json`, or `schema.base.json`.
 - Do not import `record.ts` from runtime source or import another block type.
 - Use table ids, not table names, in `$$std` calls and client data hooks.
+- Style ONLY with Tailwind classes. NEVER create a `.css` file, import a stylesheet, render `<style>`, or use a class name that only a stylesheet could style. Any of these is a failed task, not a style choice. When fixing one, rewrite each rule as Tailwind classes on the element it styles. Never move the CSS into a `<style>` element or a string.
 - Interactive controls use `@/components/ui`. Option dropdowns use `Select`. Never use `<select>`, `<option>`, or `NativeSelect`.
 
 ## Shared code

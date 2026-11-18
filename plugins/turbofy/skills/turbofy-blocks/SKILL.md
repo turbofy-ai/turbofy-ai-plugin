@@ -23,18 +23,40 @@ block-types/<Name>/
   record.ts   # appBuilder.blockType declaration; not runtime code
   index.tsx   # optional entry; named export BuildingBlock
   helpers.ts  # optional sibling runtime source
-  styles.css  # optional sibling runtime source
 ```
 
 Rules:
 
 - Do not import `record.ts` from runtime source.
 - Runtime files may import siblings, platform modules, installed dependencies, and `@/shared/<Name>` exports. Do not import another block type or unrelated app declarations. See [shared utilities and state](references/shared-modules.md) for reusable code and Zustand stores.
-- Supported runtime sources are `.ts`, `.tsx`, `.js`, `.jsx`, `.css`, and `.json`.
+- Runtime sources are `.ts`, `.tsx`, `.js`, `.jsx`, and `.json`. Stylesheets are forbidden; see [Styling](#styling--mandatory).
 - A block type without `index.tsx`/`index.ts` is valid and sourceless.
 - To use an npm package, install it in the app directory with `fs_exec` (`npm install <package>`) and wait for completion before validation; pulls preserve the user-owned `package.json`. `app_push` records the installed version of every package that block and shared-module sources import and publishes its preview bundle. A push that imports a package that is not installed fails before writing anything.
-- Load packages with `import`, not `require()`. CSS that a package imports itself is not loaded in the preview; import the styles from the block's own `.css` file or use Tailwind classes.
+- Load packages with `import`, not `require()`. Do not choose a package that needs its own stylesheet to render correctly. If no alternative exists, stop and ask the user instead of importing its CSS.
 - Never edit `.base/` or `app.base.json`.
+
+## Styling — mandatory
+
+Style blocks ONLY with Tailwind utility classes in `className`. Use inline `style={{ ... }}` only for values computed at runtime.
+
+- NEVER create a `.css`, `.scss`, `.sass`, `.less`, or `.module.css` file in a block type or shared module.
+- NEVER write a stylesheet import such as `import "./style.css"`, `import styles from "./x.module.css"`, or `import "some-package/dist/styles.css"`.
+- NEVER inject CSS at runtime with a `<style>` element, `dangerouslySetInnerHTML`, `document.head.appendChild`, or a CSS-in-JS library.
+- NEVER write class names that only a stylesheet could style, such as `className="hero"` or `className="sb"`. Every `className` must consist of Tailwind utilities.
+
+To fix a block that has a stylesheet, a `<style>` element, or custom class names, rewrite every rule as Tailwind classes on the element it styles. Then delete the stylesheet, the `<style>` element, and the custom class names. Moving the same CSS into a `<style>` string, a template literal, a JS object, or a shared module is the same violation. Replace CSS custom properties such as `--ink` with arbitrary values (`text-[#242c25]`). Replace `@media` rules with `sm:`/`md:`/`max-sm:` variants.
+
+Block CSS is global. Selectors such as `header`, `footer`, `h1`, or `.hero` leak into every other block on the page and the site. They also bypass the theme tokens and dark mode. Tailwind can express everything a block needs:
+
+| Need                              | Tailwind                                                           |
+| --------------------------------- | ------------------------------------------------------------------ |
+| Exact brand color, size, or font  | Arbitrary values: `bg-[#0b0b0b]`, `text-[clamp(2rem,6vw,5rem)]`, `font-[Inter]` |
+| Style descendants                 | Arbitrary variants: `[&_h3]:text-lg`, `[&>li]:py-2`                |
+| Hover, open, state                | `hover:`, `group-hover:`, `open:`, `data-[state=open]:`, `aria-expanded:` |
+| Responsive and dark mode          | `sm:`, `md:`, `lg:`, `dark:`                                       |
+| Pseudo-elements                   | `before:content-['']`, `after:absolute`                            |
+| Motion                            | `motion-safe:animate-pulse`, `transition-*`, `duration-*`          |
+| Repeated class lists              | A constant or helper in the block, or a component in `@/shared/<Name>` |
 
 ## Runtime props
 
@@ -203,8 +225,9 @@ Use the matching shadcn component when it exists, including `Button`, `Input`, `
    that renders an anchor: each must point to an explicitly external
    destination. Trace variable URLs to their source; do not assume they
    are external. Fix violations before running `app_push`.
-7. `block_type_check` passes before `app_push`; inspect block and shared-module failures in both dry-run and apply results.
-8. After applying changes, follow [app preview verification](../turbofy-apps/SKILL.md#verify-your-work-in-app-preview): inspect a fresh screenshot of the loaded UI and exercise the changed interactions. Verify related blocks together when they consume shared state, and test the auth flow in the intended environment.
+7. Inspect styling before publishing. Changed block and shared-module directories contain no stylesheet files, no source imports a stylesheet, and no source renders `<style>` or injects CSS. Every `className` consists of Tailwind utilities. Any violation blocks `app_push`; rewrite it in Tailwind.
+8. `block_type_check` passes before `app_push`; inspect block and shared-module failures in both dry-run and apply results.
+9. After applying changes, follow [app preview verification](../turbofy-apps/SKILL.md#verify-your-work-in-app-preview): inspect a fresh screenshot of the loaded UI and exercise the changed interactions. Verify related blocks together when they consume shared state, and test the auth flow in the intended environment.
 
 ## See also
 
