@@ -63,7 +63,7 @@ flowBuilder.step.cloudFunction("transform", {
   params: {
     cloudFunctionUrl: cloudFunctionBuilder.ref("transform-order"),
     order: flowBuilder.js("state.onOrderCreated"),
-    YOUR_API_KEY: flowBuilder.secret("<secret-record-id>"),
+    TURBOFY_WORKSPACE_SECRET_NAME: flowBuilder.secret("TURBOFY_WORKSPACE_SECRET_ID"),
   },
 }),
 ```
@@ -76,7 +76,7 @@ For Docker, declare `{ name: "transform-order", runtime: "DOCKER" }` and place a
 
 ### Secrets in cloud functions
 
-A cloud function never receives a secret's value. A secret param such as `YOUR_API_KEY` arrives as the placeholder `{{turbofy:secret:YOUR_API_KEY}}`. To use it, send the request through the Turbofy secret broker with `@turbofy-ai/secrets`. The broker puts the real value in place and redacts it from the response.
+A cloud function never receives a secret's value. A secret param such as `TURBOFY_WORKSPACE_SECRET_NAME` arrives as the placeholder `{{turbofy:secret:TURBOFY_WORKSPACE_SECRET_NAME}}`. To use it, send the request through the Turbofy secret broker with `@turbofy-ai/secrets`. The broker puts the real value in place and redacts it from the response.
 
 ```ts
 import { createSecretFetch, secret } from "@turbofy-ai/secrets";
@@ -84,7 +84,7 @@ import { createSecretFetch, secret } from "@turbofy-ai/secrets";
 export const handler = async (event) => {
   const fetch = createSecretFetch(event);
   const response = await fetch("https://api.example.com/orders", {
-    headers: { Authorization: "Bearer " + secret("YOUR_API_KEY") },
+    headers: { Authorization: "Bearer " + secret("TURBOFY_WORKSPACE_SECRET_NAME") },
   });
   return { statusCode: 200, body: await response.text() };
 };
@@ -137,7 +137,7 @@ export const flow = flowBuilder.buildFlow({
       params: {
         httpMethod: "POST",
         url: "https://example.com/orders",
-        headers: { Authorization: flowBuilder.secret("<secret-record-id>") },
+        headers: { Authorization: flowBuilder.secret("TURBOFY_WORKSPACE_SECRET_ID") },
         body: flowBuilder.js("JSON.stringify(state.onOrderCreated)"),
       },
     }),
